@@ -1,11 +1,9 @@
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
-from django.utils.module_loading import import_string
 
-from feincms3_data.data import dump_specs
+from feincms3_data.data import dump_specs, specs
 
 
-SPECS = import_string(settings.FEINCMS3_DATA_SPECS)()
+SPECS = specs()
 
 
 class Command(BaseCommand):

@@ -4,8 +4,14 @@ from collections import defaultdict
 from itertools import chain
 
 from django.apps import apps
+from django.conf import settings
 from django.core import serializers
 from django.db import transaction
+from django.utils.module_loading import import_string
+
+
+def specs():
+    return import_string(settings.FEINCMS3_DATA_SPECS)()
 
 
 def _all_subclasses(cls):
