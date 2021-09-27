@@ -13,7 +13,7 @@ Why
 Utilities for loading and dumping database data as JSON.
 
 These utilities (partially) replace Django's built-in ``dumpdata`` and
- ``loaddata`` management commands.
+``loaddata`` management commands.
 
 Suppose you want to move data between systems incrementally. In this case it
 isn't sufficient to only know the data which has been created or updated; you
@@ -30,8 +30,8 @@ How
 
 ``pip install feincms3-data``.
 
-Add ``feincms3-data`` to ``INSTALLED_APPS`` so that the included management
-  commands are discovered.
+Add ``feincms3_data`` to ``INSTALLED_APPS`` so that the included management
+commands are discovered.
 
 Add specs somewhere describing the models and relationships you want to dump,
 e.g. in a module named ``app.specs``:
@@ -102,7 +102,7 @@ The resulting JSON file has three top-level keys:
 - ``"objects": [...]``: A list of model instances; uses the same serializer as
   Django's ``dumpdata``, everything looks the same.
 
-The dumps can be loaded back into the database by running:
+The dumps can be loaded back into the database by running::
 
     ./manage.py f3loaddata -v2 tmp/dump.json tmp/districts.json
 
