@@ -97,10 +97,19 @@ The resulting JSON file has three top-level keys:
 
 - ``"version": 1``: The version of the dump, because not versioning dumps is a
   recipe for pain down the road.
-- ``"specs": [...]``: A list of model specs and filters (see the district
-  filter above).
+- ``"specs": [...]``: A list of model specs.
 - ``"objects": [...]``: A list of model instances; uses the same serializer as
   Django's ``dumpdata``, everything looks the same.
+
+Model specs consist of the following fields:
+
+- ``"model"``: The lowercased label (``app_label.model_name``) of a model.
+- ``"filter"``: A dictionary which can be passed to the ``.filter()`` queryset
+  method as keyword arguments; used for determining the objects to dump and the
+  objects to remove after loading.
+- ``"force_insert"``: If present and truish, objects are inserted using new
+  primary keys into the database instead of (potentially) overwriting
+  pre-existing objects.
 
 The dumps can be loaded back into the database by running::
 

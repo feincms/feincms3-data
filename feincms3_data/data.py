@@ -78,11 +78,16 @@ def load_dump(data, *, progress=silence):
 
     progress(f"Loaded {len(data['objects'])} objects")
 
+    force_insert_pk_map = defaultdict(dict)
+    force_insert_models = {
+        spec["model"] for spec in data["specs"] if spec.get("force_insert")
+    }
+
     with transaction.atomic():
         for spec in data["specs"]:
             if objs := objects[spec["model"]]:
                 for ds in objs:
-                    ds.save()
+                    _do_save(ds, pk_map=force_insert_pk_map, models=force_insert_models)
                     seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
 
             progress(f"Saved {len(objs)} {spec['model']} objects")
@@ -91,3 +96,29 @@ def load_dump(data, *, progress=silence):
             queryset = _model_queryset(spec)
             if deleted := queryset.exclude(pk__in=seen_pks[spec["model"]]).delete():
                 progress(f"Deleted {spec['model']} objects: {deleted}")
+
+
+def _do_save(ds, *, pk_map, models):
+    if ds.object._meta.label_lower in models:
+        # Map old PKs to new
+        for f in ds.object._meta.get_fields():
+            if (
+                f.concrete
+                and f.related_model
+                and f.related_model._meta.label_lower in models
+            ):
+                if getattr(ds.object, f.column) in pk_map[f.related_model]:
+                    setattr(
+                        ds.object,
+                        f.name,
+                        pk_map[f.related_model][getattr(ds.object, f.column)],
+                    )
+
+        # Do the saving
+        old_pk = ds.object.pk
+        ds.object.pk = None
+        ds.save(force_insert=True)
+        pk_map[ds.object.__class__][old_pk] = ds.object
+
+    else:
+        ds.save()

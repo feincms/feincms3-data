@@ -2,10 +2,12 @@ from django.db import models
 
 
 class Parent(models.Model):
-    pass
+    name = models.CharField(default="name", max_length=20)
 
 
 class Child(models.Model):
+    name = models.CharField(default="name", max_length=20)
+
     class Meta:
         abstract = True
 
