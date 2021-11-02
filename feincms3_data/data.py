@@ -66,14 +66,16 @@ def dump_specs(specs):
     return stream.getvalue()
 
 
-def load_dump(data, *, progress=silence):
+def load_dump(data, *, progress=silence, ignorenonexistent=False):
     assert data["version"] == 1
 
     objects = defaultdict(list)
     seen_pks = defaultdict(set)
 
     # Yes, that is a bit stupid
-    for ds in serializers.deserialize("json", json.dumps(data["objects"])):
+    for ds in serializers.deserialize(
+        "json", json.dumps(data["objects"]), ignorenonexistent=ignorenonexistent
+    ):
         objects[ds.object._meta.label_lower].append(ds)
 
     progress(f"Loaded {len(data['objects'])} objects")
