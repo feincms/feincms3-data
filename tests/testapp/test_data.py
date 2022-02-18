@@ -1,11 +1,13 @@
 import json
 
 from django import test
+from django.db import models
 from testapp.models import Child, Parent
 
 from feincms3_data.data import (
     dump_specs,
     load_dump,
+    specs,
     specs_for_app_models,
     specs_for_derived_models,
     specs_for_models,
@@ -13,6 +15,24 @@ from feincms3_data.data import (
 
 
 class DataTest(test.TestCase):
+    def test_specs(self):
+        self.assertCountEqual(
+            specs(),
+            [
+                {"model": "testapp.parent"},
+                {"model": "testapp.child1"},
+                {"model": "testapp.child2"},
+            ],
+        )
+
+    def test_specs_for_derived_models(self):
+        specs = list(specs_for_derived_models(models.Model))
+
+        self.assertIn({"model": "auth.user"}, specs)
+        self.assertIn({"model": "testapp.parent"}, specs)
+        self.assertIn({"model": "testapp.child1"}, specs)
+        self.assertNotIn({"model": "testapp.child"}, specs)
+
     def test_specs_for_app_models(self):
         specs = list(specs_for_app_models("testapp"))
 

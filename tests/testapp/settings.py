@@ -53,3 +53,5 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+FEINCMS3_DATA_SPECS = "testapp.specs.specs"
