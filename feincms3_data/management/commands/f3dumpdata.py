@@ -27,7 +27,8 @@ class Command(BaseCommand):
         for arg in args:
             try:
                 model, sep, args = arg.partition(":")
-                specs.extend(SPECS[model](args))
             except KeyError:
                 raise CommandError(f'Invalid spec "{arg}"')
+            else:
+                specs.extend(SPECS[model](args))
         self.stdout.write(dump_specs(specs))
