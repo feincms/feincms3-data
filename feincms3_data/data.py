@@ -99,6 +99,9 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
             progress(f"Saved {len(objs)} {spec['model']} objects")
 
         for spec in data["specs"]:
+            if spec.get("force_insert"):
+                continue
+
             queryset = _model_queryset(spec)
             deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
             if deleted[0]:
@@ -114,12 +117,13 @@ def _do_save(ds, *, pk_map, force_insert_models):
                 and f.related_model
                 and f.related_model._meta.label_lower in force_insert_models
             ):
-                if getattr(ds.object, f.column) in pk_map[f.related_model]:
-                    setattr(
-                        ds.object,
-                        f.name,
-                        pk_map[f.related_model][getattr(ds.object, f.column)],
-                    )
+                # XXX Do this unconditionally until we find a reason
+                # if getattr(ds.object, f.column) in pk_map[f.related_model]:
+                setattr(
+                    ds.object,
+                    f.name,
+                    pk_map[f.related_model][getattr(ds.object, f.column)],
+                )
 
         # Do the saving
         old_pk = ds.object.pk

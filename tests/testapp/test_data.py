@@ -2,7 +2,7 @@ import json
 
 from django import test
 from django.db import models
-from testapp.models import Child, Parent
+from testapp.models import Child, Child1, Parent
 
 from feincms3_data.data import (
     dump_specs,
@@ -12,6 +12,13 @@ from feincms3_data.data import (
     specs_for_derived_models,
     specs_for_models,
 )
+
+
+def parent_child1_set():
+    return [
+        (p.name, [c.name for c in p.child1_set.all()])
+        for p in Parent.objects.order_by("id").prefetch_related("child1_set")
+    ]
 
 
 class DataTest(test.TestCase):
@@ -107,10 +114,15 @@ class DataTest(test.TestCase):
 
     def test_force_insert_partial_graph(self):
         p1 = Parent.objects.create(name="blub-1")
-        c1_1 = p1.child1_set.create(name="blub-1-1")
+        p1.child1_set.create(name="blub-1-1")
 
         p2 = Parent.objects.create(name="blub-2")
         p2.child1_set.create(name="blub-2-1")
+
+        self.assertEqual(
+            parent_child1_set(),
+            [("blub-1", ["blub-1-1"]), ("blub-2", ["blub-2-1"])],
+        )
 
         specs = [
             *specs_for_models(
@@ -126,19 +138,21 @@ class DataTest(test.TestCase):
         dump = json.loads(dump_specs(specs))
         load_dump(dump)
 
-        data = [
-            (p.name, [c.name for c in p.child1_set.all()])
-            for p in Parent.objects.order_by("id").prefetch_related("child1_set")
-        ]
-        self.assertEqual(data, [("blub-1", ["blub-1-1"]), ("blub-2", ["blub-2-1"])])
-
-        self.assertNotEqual(c1_1.pk, p1.child1_set.get().pk)
+        self.assertEqual(
+            parent_child1_set(),
+            [("blub-1", ["blub-1-1", "blub-1-1"]), ("blub-2", ["blub-2-1"])],
+        )
 
     def test_force_insert_full_graph(self):
         Parent.objects.create(name="other")
 
         p1 = Parent.objects.create(name="blub-1")
         p1.child1_set.create(name="blub-1-1")
+
+        self.assertEqual(
+            parent_child1_set(),
+            [("other", []), ("blub-1", ["blub-1-1"])],
+        )
 
         specs = [
             *specs_for_models(
@@ -154,11 +168,40 @@ class DataTest(test.TestCase):
         dump = json.loads(dump_specs(specs))
         load_dump(dump)
 
-        data = [
-            (p.name, [c.name for c in p.child1_set.all()])
-            for p in Parent.objects.order_by("id").prefetch_related("child1_set")
-        ]
-        self.assertEqual(data, [("other", []), ("blub-1", ["blub-1-1"])])
+        self.assertEqual(
+            parent_child1_set(),
+            [
+                ("other", []),
+                ("blub-1", ["blub-1-1"]),
+                ("blub-1", ["blub-1-1"]),
+            ],
+        )
 
         p1_new = Parent.objects.latest("pk")
         self.assertNotEqual(p1.pk, p1_new.pk)
+
+    def test_force_insert_parent_only(self):
+        p1 = Parent.objects.create(name="p1")
+        p1.child1_set.create(name="c1")
+
+        specs = [
+            *specs_for_models(
+                [Parent],
+                {"force_insert": True},
+            ),
+            *specs_for_models(
+                [Child1],
+                {"force_insert": False},
+            ),
+        ]
+
+        dump = json.loads(dump_specs(specs))
+        p1.name = "p1-old"
+        p1.save()
+        load_dump(dump)
+
+        # c1 still hangs off first
+        self.assertEqual(
+            parent_child1_set(),
+            [("p1-old", ["c1"]), ("p1", [])],
+        )

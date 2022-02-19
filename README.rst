@@ -109,7 +109,8 @@ Model specs consist of the following fields:
   objects to remove after loading.
 - ``"force_insert"``: If present and truish, objects are inserted using new
   primary keys into the database instead of (potentially) overwriting
-  pre-existing objects.
+  pre-existing objects. This flag also makes the loader **not** delete objects
+  it doesn't know about.
 
 The dumps can be loaded back into the database by running::
 
