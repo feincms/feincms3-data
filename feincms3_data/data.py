@@ -89,7 +89,11 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
         for spec in data["specs"]:
             if objs := objects[spec["model"]]:
                 for ds in objs:
-                    _do_save(ds, pk_map=force_insert_pk_map, models=force_insert_models)
+                    _do_save(
+                        ds,
+                        pk_map=force_insert_pk_map,
+                        force_insert_models=force_insert_models,
+                    )
                     seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
 
             progress(f"Saved {len(objs)} {spec['model']} objects")
@@ -101,14 +105,14 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
                 progress(f"Deleted {spec['model']} objects: {deleted}")
 
 
-def _do_save(ds, *, pk_map, models):
-    if ds.object._meta.label_lower in models:
+def _do_save(ds, *, pk_map, force_insert_models):
+    if ds.object._meta.label_lower in force_insert_models:
         # Map old PKs to new
         for f in ds.object._meta.get_fields():
             if (
                 f.concrete
                 and f.related_model
-                and f.related_model._meta.label_lower in models
+                and f.related_model._meta.label_lower in force_insert_models
             ):
                 if getattr(ds.object, f.column) in pk_map[f.related_model]:
                     setattr(
