@@ -26,9 +26,24 @@ def _only_concrete_models(iterable):
             yield model
 
 
+class InvalidSpec(Exception):
+    pass
+
+
+_valid_keys = {"model", "filter", "force_insert"}
+
+
+def _validate_spec(spec):
+    if "model" not in spec:
+        raise InvalidSpec(f"The spec {spec!r} requires a 'model' key")
+    if unknown := (set(spec.keys()) - _valid_keys):
+        raise InvalidSpec(f"The spec {spec!r} contains unknown keys: {unknown!r}")
+    return spec
+
+
 def specs_for_models(models, spec=None):
     spec = {} if spec is None else spec
-    return (spec | {"model": cls._meta.label_lower} for cls in models)
+    return (_validate_spec(spec | {"model": cls._meta.label_lower}) for cls in models)
 
 
 def specs_for_derived_models(cls, spec=None):

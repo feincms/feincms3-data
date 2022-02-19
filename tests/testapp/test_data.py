@@ -5,6 +5,8 @@ from django.db import models
 from testapp.models import Child, Child1, Parent
 
 from feincms3_data.data import (
+    InvalidSpec,
+    _validate_spec,
     dump_specs,
     load_dump,
     specs,
@@ -22,6 +24,16 @@ def parent_child1_set():
 
 
 class DataTest(test.TestCase):
+    def test_invalid_spec_missing_model(self):
+        with self.assertRaises(InvalidSpec) as cm:
+            _validate_spec({})
+        self.assertIn("requires a 'model' key", str(cm.exception))
+
+    def test_invalid_spec_unknown_keys(self):
+        with self.assertRaises(InvalidSpec) as cm:
+            list(specs_for_models([Parent], {"hello": "world"}))
+        self.assertIn("contains unknown keys: {'hello'}", str(cm.exception))
+
     def test_specs(self):
         self.assertCountEqual(
             specs(),
