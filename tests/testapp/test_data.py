@@ -212,8 +212,8 @@ class DataTest(test.TestCase):
         p1.save()
         load_dump(dump)
 
-        # c1 still hangs off first
+        # c1 now hangs off second
         self.assertEqual(
             parent_child1_set(),
-            [("p1-old", ["c1"]), ("p1", [])],
+            [("p1-old", []), ("p1", ["c1"])],
         )

@@ -124,22 +124,22 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
 
 
 def _do_save(ds, *, pk_map, force_insert_models):
-    if ds.object._meta.label_lower in force_insert_models:
-        # Map old PKs to new
-        for f in ds.object._meta.get_fields():
-            if (
-                f.concrete
-                and f.related_model
-                and f.related_model._meta.label_lower in force_insert_models
-            ):
-                # XXX Do this unconditionally until we find a reason
-                # if getattr(ds.object, f.column) in pk_map[f.related_model]:
-                setattr(
-                    ds.object,
-                    f.name,
-                    pk_map[f.related_model][getattr(ds.object, f.column)],
-                )
+    # Map old PKs to new
+    for f in ds.object._meta.get_fields():
+        if (
+            f.concrete
+            and f.related_model
+            and f.related_model._meta.label_lower in force_insert_models
+        ):
+            # XXX Do this unconditionally until we find a reason
+            # if getattr(ds.object, f.column) in pk_map[f.related_model]:
+            setattr(
+                ds.object,
+                f.name,
+                pk_map[f.related_model][getattr(ds.object, f.column)],
+            )
 
+    if ds.object._meta.label_lower in force_insert_models:
         # Do the saving
         old_pk = ds.object.pk
         ds.object.pk = None
