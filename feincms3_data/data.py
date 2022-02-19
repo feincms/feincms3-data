@@ -96,7 +96,8 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
 
         for spec in data["specs"]:
             queryset = _model_queryset(spec)
-            if deleted := queryset.exclude(pk__in=seen_pks[spec["model"]]).delete():
+            deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
+            if deleted[0]:
                 progress(f"Deleted {spec['model']} objects: {deleted}")
 
 
