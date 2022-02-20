@@ -109,8 +109,9 @@ Model specs consist of the following fields:
   objects to remove after loading.
 - ``"force_insert"``: If present and truish, objects are inserted using new
   primary keys into the database instead of (potentially) overwriting
-  pre-existing objects. This flag also makes the loader **not** delete objects
-  it doesn't know about.
+  pre-existing objects.
+- ``"delete_missing"``: This flag makes the loader delete all objects matching
+  ``"filter"`` which do not exist in the dump.
 
 The dumps can be loaded back into the database by running::
 
@@ -118,4 +119,5 @@ The dumps can be loaded back into the database by running::
 
 Each dump is processed in an individual transaction. The data is first loaded
 into the database; at the end, data *matching* the filters but whose primary
-key wasn't contained in the dump is deleted from the database.
+key wasn't contained in the dump is deleted from the database (if
+``"delete_missing": True``).

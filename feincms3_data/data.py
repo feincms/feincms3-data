@@ -30,7 +30,7 @@ class InvalidSpec(Exception):
     pass
 
 
-_valid_keys = {"model", "filter", "force_insert"}
+_valid_keys = {"model", "filter", "force_insert", "delete_missing"}
 
 
 def _validate_spec(spec):
@@ -114,7 +114,7 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
             progress(f"Saved {len(objs)} {spec['model']} objects")
 
         for spec in data["specs"]:
-            if spec.get("force_insert"):
+            if not spec.get("delete_missing"):
                 continue
 
             queryset = _model_queryset(spec)
