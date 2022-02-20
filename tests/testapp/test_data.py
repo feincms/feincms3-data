@@ -9,6 +9,7 @@ from feincms3_data.data import (
     _validate_spec,
     dump_specs,
     load_dump,
+    pk_cache,
     specs,
     specs_for_app_models,
     specs_for_derived_models,
@@ -309,3 +310,13 @@ class DataTest(TransactionTestCase):
             parent_tags(),
             {"p1": set(), "p2": set()},
         )
+
+    def test_pk_cache(self):
+        pks = pk_cache()
+        with self.assertNumQueries(1):
+            self.assertEqual(pks(Parent), set())
+        with self.assertNumQueries(0):
+            self.assertEqual(pks(Parent), set())
+        pks = pk_cache()
+        with self.assertNumQueries(1):
+            self.assertEqual(pks(Parent), set())
