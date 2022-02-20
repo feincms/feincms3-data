@@ -52,15 +52,24 @@ e.g. in a module named ``app.specs``:
         return [
             *specs_for_models(
                 [world_models.District],
-                {"filter": {"pk__in": pks}, "delete_missing": True},
+                {
+                    "filter": {"pk__in": pks},
+                    "delete_missing": True,
+                },
             ),
             *specs_for_models(
                 [world_models.Exercise],
-                {"filter": {"district__in": pks}, "delete_missing": True},
+                {
+                    "filter": {"district__in": pks},
+                    "delete_missing": True,
+                },
             ),
             *specs_for_derived_models(
                 world_models.ExercisePlugin,
-                {"filter": {"parent__district__in": pks}, "delete_missing": True},
+                {
+                    "filter": {"parent__district__in": pks},
+                    "delete_missing": True,
+                },
             ),
         ]
 
@@ -81,7 +90,6 @@ e.g. in a module named ``app.specs``:
                     dashboard_models.TeachingMaterial,
                 ],
                 {"delete_missing": True},
-            ),
             ),
             "districts": districts,
         }
