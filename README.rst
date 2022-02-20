@@ -52,28 +52,36 @@ e.g. in a module named ``app.specs``:
         return [
             *specs_for_models(
                 [world_models.District],
-                {"filter": {"pk__in": pks}},
+                {"filter": {"pk__in": pks}, "delete_missing": True},
             ),
             *specs_for_models(
                 [world_models.Exercise],
-                {"filter": {"district__in": pks}},
+                {"filter": {"district__in": pks}, "delete_missing": True},
             ),
             *specs_for_derived_models(
                 world_models.ExercisePlugin,
-                {"filter": {"parent__district__in": pks}},
+                {"filter": {"parent__district__in": pks}, "delete_missing": True},
             ),
         ]
 
 
     def specs():
         return {
-            "articles": lambda args: specs_for_app_models("articles"),
-            "pages": lambda args: specs_for_app_models("pages"),
+            "articles": lambda args: specs_for_app_models(
+                "articles",
+                {"delete_missing": True},
+            ),
+            "pages": lambda args: specs_for_app_models(
+                "pages",
+                {"delete_missing": True},
+            ),
             "teachingmaterials": lambda args: specs_for_models(
                 [
                     dashboard_models.TeachingMaterialGroup,
                     dashboard_models.TeachingMaterial,
-                ]
+                ],
+                {"delete_missing": True},
+            ),
             ),
             "districts": districts,
         }
