@@ -30,7 +30,7 @@ class InvalidSpec(Exception):
     pass
 
 
-_valid_keys = {"model", "filter", "force_insert", "delete_missing"}
+_valid_keys = {"model", "filter", "save_as_new", "delete_missing"}
 
 
 def _validate_spec(spec):
@@ -95,9 +95,9 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
 
     progress(f"Loaded {len(data['objects'])} objects")
 
-    force_insert_pk_map = defaultdict(dict)
-    force_insert_models = {
-        spec["model"] for spec in data["specs"] if spec.get("force_insert")
+    save_as_new_pk_map = defaultdict(dict)
+    save_as_new_models = {
+        spec["model"] for spec in data["specs"] if spec.get("save_as_new")
     }
 
     with transaction.atomic():
@@ -106,8 +106,8 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
                 for ds in objs:
                     _do_save(
                         ds,
-                        pk_map=force_insert_pk_map,
-                        force_insert_models=force_insert_models,
+                        pk_map=save_as_new_pk_map,
+                        save_as_new_models=save_as_new_models,
                     )
                     seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
 
@@ -123,13 +123,13 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
                 progress(f"Deleted {spec['model']} objects: {deleted}")
 
 
-def _do_save(ds, *, pk_map, force_insert_models):
+def _do_save(ds, *, pk_map, save_as_new_models):
     # Map old PKs to new
     for f in ds.object._meta.get_fields():
         if (
             f.concrete
             and f.related_model
-            and f.related_model._meta.label_lower in force_insert_models
+            and f.related_model._meta.label_lower in save_as_new_models
         ):
             # XXX Do this unconditionally until we find a reason
             # if getattr(ds.object, f.column) in pk_map[f.related_model]:
@@ -139,7 +139,7 @@ def _do_save(ds, *, pk_map, force_insert_models):
                 pk_map[f.related_model][getattr(ds.object, f.column)],
             )
 
-    if ds.object._meta.label_lower in force_insert_models:
+    if ds.object._meta.label_lower in save_as_new_models:
         # Do the saving
         old_pk = ds.object.pk
         ds.object.pk = None

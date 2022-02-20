@@ -106,13 +106,13 @@ class DataTest(test.TestCase):
 
         self.assertEqual(len(Parent.objects.all()), 2)
 
-    def test_force_insert_simple(self):
+    def test_save_as_new_simple(self):
         p1 = Parent.objects.create(name="blub")
 
         specs = [
             *specs_for_models(
                 [Parent],
-                {"force_insert": True},
+                {"save_as_new": True},
             ),
         ]
 
@@ -124,7 +124,7 @@ class DataTest(test.TestCase):
         self.assertNotEqual(p1.pk, p2.pk)
         self.assertEqual(p1.name, p2.name)
 
-    def test_force_insert_partial_graph(self):
+    def test_save_as_new_partial_graph(self):
         p1 = Parent.objects.create(name="blub-1")
         c1 = p1.child1_set.create(name="blub-1-1")
 
@@ -145,7 +145,7 @@ class DataTest(test.TestCase):
                 Child,
                 {
                     "filter": {"parent__in": [p1.pk]},
-                    "force_insert": True,
+                    "save_as_new": True,
                     "delete_missing": True,
                 },
             ),
@@ -162,7 +162,7 @@ class DataTest(test.TestCase):
         c1_new = p1.child1_set.get()
         self.assertNotEqual(c1.pk, c1_new.pk)
 
-    def test_force_insert_full_graph(self):
+    def test_save_as_new_full_graph(self):
         Parent.objects.create(name="other")
 
         p1 = Parent.objects.create(name="blub-1")
@@ -178,7 +178,7 @@ class DataTest(test.TestCase):
                 [Parent],
                 {
                     "filter": {"pk__in": [p1.pk]},
-                    "force_insert": True,
+                    "save_as_new": True,
                     "delete_missing": False,  # Do not remove old items
                 },
             ),
@@ -186,7 +186,7 @@ class DataTest(test.TestCase):
                 Child,
                 {
                     "filter": {"parent__in": [p1.pk]},
-                    "force_insert": True,
+                    "save_as_new": True,
                     "delete_missing": False,  # Do not remove old items
                 },
             ),
@@ -208,18 +208,18 @@ class DataTest(test.TestCase):
         p1_new = Parent.objects.latest("pk")
         self.assertNotEqual(p1.pk, p1_new.pk)
 
-    def test_force_insert_parent_only(self):
+    def test_save_as_new_parent_only(self):
         p1 = Parent.objects.create(name="p1")
         p1.child1_set.create(name="c1")
 
         specs = [
             *specs_for_models(
                 [Parent],
-                {"force_insert": True},
+                {"save_as_new": True},
             ),
             *specs_for_models(
                 [Child1],
-                {"force_insert": False},
+                {"save_as_new": False},
             ),
         ]
 
