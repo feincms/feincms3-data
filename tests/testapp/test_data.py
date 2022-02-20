@@ -1,5 +1,4 @@
 import json
-from unittest import expectedFailure
 
 from django.db import models
 from django.test import TransactionTestCase
@@ -269,30 +268,44 @@ class DataTest(TransactionTestCase):
             {"p1": {"t1", "t2"}, "p2": {"t1", "t2"}},
         )
 
-    @expectedFailure
     def test_m2m_deletion_on_targeted_side(self):
         t1 = Tag.objects.create(name="t1")
         t2 = Tag.objects.create(name="t2")
         t3 = Tag.objects.create(name="t3")
 
         p1 = Parent.objects.create(name="p1")
-        p1.tags.set([t1, t2, t3])
-        p2 = Parent.objects.create(name="p2")
-        p2.tags.set([t1, t2, t3])
+        p1.tags.set([t1, t2])
+
+        Parent.objects.create(name="p2")
 
         specs = [
-            *specs_for_models([Parent], {"delete_missing": True}),
-            # *specs_for_models([Parent.tags.through], {"delete_missing": True}),
+            *specs_for_models([Parent], {"ignore_missing_m2m": ["tags"]}),
         ]
         dump = json.loads(dump_specs(specs))
 
-        from pprint import pprint
+        t2.delete()
+        p1.tags.add(t3)
 
-        print()
-        pprint(dump)
+        self.assertEqual(
+            parent_tags(),
+            {"p1": {"t1", "t3"}, "p2": set()},
+        )
 
-        t3.delete()
-        try:
-            load_dump(dump)
-        except Exception:
-            self.fail()
+        load_dump(dump)
+
+        # After restore
+        # - t3 has been removed again
+        # - t2 isn't referenced because it has been deleted, but no foreign key
+        #   error happens
+
+        self.assertEqual(
+            parent_tags(),
+            {"p1": {"t1"}, "p2": set()},
+        )
+
+        Tag.objects.all().delete()
+
+        self.assertEqual(
+            parent_tags(),
+            {"p1": set(), "p2": set()},
+        )

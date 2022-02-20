@@ -123,11 +123,14 @@ Model specs consist of the following fields:
 - ``"filter"``: A dictionary which can be passed to the ``.filter()`` queryset
   method as keyword arguments; used for determining the objects to dump and the
   objects to remove after loading.
+- ``"delete_missing"``: This flag makes the loader delete all objects matching
+  ``"filter"`` which do not exist in the dump.
+- ``"ignore_missing_m2m"``: A list of field names where deletions of related
+  models should be ignored when restoring. This may be especially useful when
+  only transferring content partially between databases.
 - ``"save_as_new"``: If present and truish, objects are inserted using new
   primary keys into the database instead of (potentially) overwriting
   pre-existing objects.
-- ``"delete_missing"``: This flag makes the loader delete all objects matching
-  ``"filter"`` which do not exist in the dump.
 
 The dumps can be loaded back into the database by running::
 

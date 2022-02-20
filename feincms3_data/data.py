@@ -1,6 +1,7 @@
 import io
 import json
 from collections import defaultdict
+from functools import cache
 from itertools import chain
 
 from django.apps import apps
@@ -30,7 +31,14 @@ class InvalidSpec(Exception):
     pass
 
 
-_valid_keys = {"model", "filter", "save_as_new", "delete_missing"}
+_valid_keys = {
+    "model",
+    "filter",
+    # Flags:
+    "delete_missing",
+    "ignore_missing_m2m",
+    "save_as_new",
+}
 
 
 def _validate_spec(spec):
@@ -97,11 +105,18 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
     save_as_new_models = {
         spec["model"] for spec in data["specs"] if spec.get("save_as_new")
     }
+    ignore_missing_m2m_data = defaultdict(dict)
 
     with transaction.atomic():
         for spec in data["specs"]:
             if objs := objects[spec["model"]]:
                 for ds in objs:
+                    if ignore_missing_m2m := spec.get("ignore_missing_m2m"):
+                        for field_name in ignore_missing_m2m:
+                            ignore_missing_m2m_data[ds][field_name] = ds.m2m_data.pop(
+                                field_name, []
+                            )
+
                     _do_save(
                         ds,
                         pk_map=save_as_new_pk_map,
@@ -119,6 +134,21 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
             deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
             if deleted[0]:
                 progress(f"Deleted {spec['model']} objects: {deleted}")
+
+        pks = pk_cache()
+        for ds, lists in ignore_missing_m2m_data.items():
+            for field_name, field_pks in lists.items():
+                field = ds.object._meta.get_field(field_name)
+                existing = pks(field.related_model)
+                getattr(ds.object, field_name).set(set(field_pks) & existing)
+
+
+def pk_cache():
+    @cache
+    def pks(model):
+        return set(model._default_manager.values_list("pk", flat=True))
+
+    return pks
 
 
 def _do_save(ds, *, pk_map, save_as_new_models):
