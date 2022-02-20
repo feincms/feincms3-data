@@ -51,9 +51,7 @@ def specs_for_derived_models(cls, spec=None):
 
 
 def specs_for_app_models(app, spec=None):
-    return specs_for_models(
-        apps.get_app_config(app).get_models(include_auto_created=True), spec
-    )
+    return specs_for_models(apps.get_app_config(app).get_models(), spec)
 
 
 def _model_queryset(spec):

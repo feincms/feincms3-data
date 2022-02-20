@@ -1,8 +1,9 @@
 import json
+from unittest import expectedFailure
 
-from django import test
 from django.db import models
-from testapp.models import Child, Child1, Parent
+from django.test import TransactionTestCase
+from testapp.models import Child, Child1, Parent, Tag
 
 from feincms3_data.data import (
     InvalidSpec,
@@ -23,7 +24,14 @@ def parent_child1_set():
     ]
 
 
-class DataTest(test.TestCase):
+def parent_tags():
+    return {
+        parent.name: {tag.name for tag in parent.tags.all()}
+        for parent in Parent.objects.all()
+    }
+
+
+class DataTest(TransactionTestCase):
     def test_invalid_spec_missing_model(self):
         with self.assertRaises(InvalidSpec) as cm:
             _validate_spec({})
@@ -41,6 +49,7 @@ class DataTest(test.TestCase):
                 {"model": "testapp.parent"},
                 {"model": "testapp.child1"},
                 {"model": "testapp.child2"},
+                {"model": "testapp.tag"},
             ],
         )
 
@@ -61,6 +70,7 @@ class DataTest(test.TestCase):
                 {"model": "testapp.parent", "delete_missing": True},
                 {"model": "testapp.child1", "delete_missing": True},
                 {"model": "testapp.child2", "delete_missing": True},
+                {"model": "testapp.tag", "delete_missing": True},
             ],
         )
 
@@ -233,3 +243,56 @@ class DataTest(test.TestCase):
             parent_child1_set(),
             [("p1-old", []), ("p1", ["c1"])],
         )
+
+    def test_m2m_deletion_on_defining_side(self):
+        t1 = Tag.objects.create(name="t1")
+        t2 = Tag.objects.create(name="t2")
+        t3 = Tag.objects.create(name="t3")
+
+        p1 = Parent.objects.create(name="p1")
+        p1.tags.set([t1, t2])
+        p2 = Parent.objects.create(name="p2")
+        p2.tags.set([t1, t2])
+
+        specs = [
+            *specs_for_models([Parent], {"delete_missing": True}),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        p1.delete()
+        p2.tags.add(t3)
+
+        load_dump(dump)
+
+        self.assertEqual(
+            parent_tags(),
+            {"p1": {"t1", "t2"}, "p2": {"t1", "t2"}},
+        )
+
+    @expectedFailure
+    def test_m2m_deletion_on_targeted_side(self):
+        t1 = Tag.objects.create(name="t1")
+        t2 = Tag.objects.create(name="t2")
+        t3 = Tag.objects.create(name="t3")
+
+        p1 = Parent.objects.create(name="p1")
+        p1.tags.set([t1, t2, t3])
+        p2 = Parent.objects.create(name="p2")
+        p2.tags.set([t1, t2, t3])
+
+        specs = [
+            *specs_for_models([Parent], {"delete_missing": True}),
+            # *specs_for_models([Parent.tags.through], {"delete_missing": True}),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        from pprint import pprint
+
+        print()
+        pprint(dump)
+
+        t3.delete()
+        try:
+            load_dump(dump)
+        except Exception:
+            self.fail()
