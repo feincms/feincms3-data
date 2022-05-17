@@ -51,7 +51,7 @@ def _validate_spec(spec):
 
 def specs_for_models(models, spec=None):
     spec = {} if spec is None else spec
-    return (_validate_spec(spec | {"model": cls._meta.label_lower}) for cls in models)
+    return (_validate_spec({**spec, "model": cls._meta.label_lower}) for cls in models)
 
 
 def specs_for_derived_models(cls, spec=None):
