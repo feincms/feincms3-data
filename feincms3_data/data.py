@@ -1,7 +1,7 @@
 import io
 import json
 from collections import defaultdict
-from functools import cache
+from functools import lru_cache
 from itertools import chain
 
 from django.apps import apps
@@ -144,7 +144,7 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
 
 
 def pk_cache():
-    @cache
+    @lru_cache(maxsize=None)
     def pks(model):
         return set(model._default_manager.values_list("pk", flat=True))
 
