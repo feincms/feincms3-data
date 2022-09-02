@@ -360,3 +360,24 @@ class DataTest(TransactionTestCase):
         )
 
         # print(dump)
+
+    def test_invalid_dumps(self):
+        with self.assertRaises(AssertionError):
+            load_dump({"version": -1})
+
+        with self.assertRaises(InvalidSpec):
+            load_dump(
+                {
+                    "version": 1,
+                    "specs": [{"model": "testapp.parent", "hello": "world"}],
+                }
+            )
+
+        with self.assertRaises(KeyError):
+            load_dump(
+                {
+                    "version": 1,
+                    "specs": [{"model": "testapp.parent"}],
+                    # "objects": ...
+                }
+            )
