@@ -381,3 +381,16 @@ class DataTest(TransactionTestCase):
                     # "objects": ...
                 }
             )
+
+    def test_multiple_specs_same_model(self):
+        p1 = Parent.objects.create()
+        p2 = Parent.objects.create()
+
+        # Very artificial. But it may be important that this works.
+        specs = [
+            *specs_for_models([Parent], {"filter": {"pk__lte": p1.pk}}),
+            *specs_for_models([Parent], {"filter": {"pk__lte": p2.pk}}),
+        ]
+
+        data = json.loads(dump_specs(specs))
+        self.assertEqual(len(data["objects"]), 3)
