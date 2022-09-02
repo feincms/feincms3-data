@@ -91,6 +91,8 @@ def dump_specs(specs, *, mappers=None):
 
 def load_dump(data, *, progress=silence, ignorenonexistent=False):
     assert data["version"] == 1
+    for spec in data["specs"]:
+        _validate_spec(spec)
 
     objects = defaultdict(list)
     seen_pks = defaultdict(set)
