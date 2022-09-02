@@ -1,34 +1,19 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 
-from feincms3_data.data import dump_specs, specs
+from feincms3_data.data import datasets, dump_specs
 
 
-SPECS = specs()
+DATASETS = datasets()
 
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            "args",
-            nargs="*",
-            help=f"Model specs which should be dumped ({', '.join(sorted(SPECS))}).",
-        )
-        parser.add_argument(
-            "--all",
-            action="store_true",
-            dest="all_specs",
-            help="Dump all model specs.",
+            "dataset",
+            help=f"Model dataset which should be dumped. {', '.join(DATASETS)}",
         )
 
     def handle(self, *args, **options):
-        if options["all_specs"]:
-            args = SPECS.keys()
-        specs = []
-        for arg in args:
-            try:
-                model, sep, args = arg.partition(":")
-            except KeyError:
-                raise CommandError(f'Invalid spec "{arg}"')
-            else:
-                specs.extend(SPECS[model](args))
-        self.stdout.write(dump_specs(specs))
+        dataset, sep, args = options["dataset"].partition(":")
+        ds = DATASETS[dataset]
+        self.stdout.write(dump_specs(ds["specs"](args), mappers=ds.get("mappers")))

@@ -9,6 +9,8 @@ Change log
 - Added the ``mappers`` argument to ``dump_specs`` which allows changing the
   serialized representation of models before writing the JSON.
 - Changed ``load_dump`` to also validate specs.
+- Replaced ``FEINCMS3_DATA_SPECS`` with the more flexible
+  ``FEINCMS3_DATA_DATASETS``.
 
 
 `0.1`_ (2021-09-27)

@@ -1,7 +1,11 @@
 from feincms3_data.data import specs_for_app_models
 
 
-def specs():
-    return [
-        *specs_for_app_models("testapp"),
-    ]
+def datasets():
+    return {
+        "testapp": {
+            "specs": [
+                *specs_for_app_models("testapp"),
+            ],
+        },
+    }

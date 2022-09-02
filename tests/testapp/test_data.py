@@ -7,10 +7,10 @@ from testapp.models import Child, Child1, Parent, Tag
 from feincms3_data.data import (
     InvalidSpec,
     _validate_spec,
+    datasets,
     dump_specs,
     load_dump,
     pk_cache,
-    specs,
     specs_for_app_models,
     specs_for_derived_models,
     specs_for_models,
@@ -42,15 +42,19 @@ class DataTest(TransactionTestCase):
             list(specs_for_models([Parent], {"hello": "world"}))
         self.assertIn("contains unknown keys: {'hello'}", str(cm.exception))
 
-    def test_specs(self):
-        self.assertCountEqual(
-            specs(),
-            [
-                {"model": "testapp.parent"},
-                {"model": "testapp.child1"},
-                {"model": "testapp.child2"},
-                {"model": "testapp.tag"},
-            ],
+    def test_datasets(self):
+        self.assertEqual(
+            datasets(),
+            {
+                "testapp": {
+                    "specs": [
+                        {"model": "testapp.tag"},
+                        {"model": "testapp.parent"},
+                        {"model": "testapp.child1"},
+                        {"model": "testapp.child2"},
+                    ]
+                }
+            },
         )
 
     def test_specs_for_derived_models(self):

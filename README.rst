@@ -33,8 +33,8 @@ How
 Add ``feincms3_data`` to ``INSTALLED_APPS`` so that the included management
 commands are discovered.
 
-Add specs somewhere describing the models and relationships you want to dump,
-e.g. in a module named ``app.specs``:
+Add datasets somewhere describing the models and relationships you want to
+dump, e.g. in a module named ``app.f3datasets``:
 
 .. code-block:: python
 
@@ -74,36 +74,44 @@ e.g. in a module named ``app.specs``:
         ]
 
 
-    def specs():
+    def datasets():
         return {
-            "articles": lambda args: specs_for_app_models(
-                "articles",
-                {"delete_missing": True},
-            ),
-            "pages": lambda args: specs_for_app_models(
-                "pages",
-                {"delete_missing": True},
-            ),
-            "teachingmaterials": lambda args: specs_for_models(
-                [
-                    dashboard_models.TeachingMaterialGroup,
-                    dashboard_models.TeachingMaterial,
-                ],
-                {"delete_missing": True},
-            ),
-            "districts": districts,
+            "articles": {
+                "specs": lambda args: specs_for_app_models(
+                    "articles",
+                    {"delete_missing": True},
+                ),
+            },
+            "pages": {
+                "specs": lambda args: specs_for_app_models(
+                    "pages",
+                    {"delete_missing": True},
+                ),
+            },
+            "teachingmaterials": {
+                "specs": lambda args: specs_for_models(
+                    [
+                        dashboard_models.TeachingMaterialGroup,
+                        dashboard_models.TeachingMaterial,
+                    ],
+                    {"delete_missing": True},
+                ),
+            },
+            "districts": {
+                "specs": districts,
+            },
         }
 
 Add a setting with the Python module path to the specs function:
 
 .. code-block:: python
 
-    FEINCMS3_DATA_SPECS = "app.specs.specs"
+    FEINCMS3_DATA_DATASETS = "app.f3datasets.datasets"
 
 
-Now, to dump e.g. pages and teachingmaterials you would run::
+Now, to dump e.g. pages you would run::
 
-    ./manage.py f3dumpdata pages teachingmaterials > tmp/dump.json
+    ./manage.py f3dumpdata pages > tmp/pages.json
 
 To dump the districts with the primary key of 42 and 43 you would run::
 
@@ -134,7 +142,7 @@ Model specs consist of the following fields:
 
 The dumps can be loaded back into the database by running::
 
-    ./manage.py f3loaddata -v2 tmp/dump.json tmp/districts.json
+    ./manage.py f3loaddata -v2 tmp/pages.json tmp/districts.json
 
 Each dump is processed in an individual transaction. The data is first loaded
 into the database; at the end, data *matching* the filters but whose primary

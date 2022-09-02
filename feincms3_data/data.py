@@ -13,8 +13,8 @@ from django.utils.module_loading import import_string
 from feincms3_data.serializers import JSONSerializer
 
 
-def specs():
-    return import_string(settings.FEINCMS3_DATA_SPECS)()
+def datasets():
+    return import_string(settings.FEINCMS3_DATA_DATASETS)()
 
 
 def _all_subclasses(cls):

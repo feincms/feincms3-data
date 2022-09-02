@@ -54,4 +54,4 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-FEINCMS3_DATA_SPECS = "testapp.specs.specs"
+FEINCMS3_DATA_DATASETS = "testapp.specs.datasets"
