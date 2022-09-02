@@ -6,6 +6,8 @@ Change log
 ~~~~~~~~~~~~~~~
 
 - Added Django 4.1.
+- Added the ``mappers`` argument to ``dump_specs`` which allows changing the
+  serialized representation of models before writing the JSON.
 
 
 `0.1`_ (2021-09-27)

@@ -10,6 +10,8 @@ from django.core import serializers
 from django.db import transaction
 from django.utils.module_loading import import_string
 
+from feincms3_data.serializers import JSONSerializer
+
 
 def specs():
     return import_string(settings.FEINCMS3_DATA_SPECS)()
@@ -73,13 +75,13 @@ def silence(*a):
     pass
 
 
-def dump_specs(specs):
+def dump_specs(specs, *, mappers=None):
     stream = io.StringIO()
     stream.write('{"version": 1, "specs": ')
     json.dump(specs, stream)
     stream.write(', "objects": ')
-    serializers.serialize(
-        "json",
+    serializer = JSONSerializer(mappers=mappers or {})
+    serializer.serialize(
         chain.from_iterable(_model_queryset(spec) for spec in specs),
         stream=stream,
     )

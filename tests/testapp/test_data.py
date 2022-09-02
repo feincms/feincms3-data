@@ -320,3 +320,43 @@ class DataTest(TransactionTestCase):
         pks = pk_cache()
         with self.assertNumQueries(1):
             self.assertEqual(pks(Parent), set())
+
+    def test_mappers(self):
+        specs = list(specs_for_app_models("testapp"))
+
+        self.assertCountEqual(
+            specs,
+            [
+                {"model": "testapp.parent"},
+                {"model": "testapp.child1"},
+                {"model": "testapp.child2"},
+                {"model": "testapp.tag"},
+            ],
+        )
+
+        p = Parent.objects.create()
+        p.child1_set.create()
+
+        def parent_mapper(obj):
+            obj["fields"]["name"] += "-hello"
+            return obj
+
+        dump = json.loads(
+            dump_specs(
+                specs,
+                mappers={
+                    "testapp.parent": parent_mapper,
+                },
+            )
+        )
+
+        self.assertEqual(
+            dump["objects"][0]["fields"],
+            {"name": "name-hello", "tags": []},
+        )
+        self.assertEqual(
+            dump["objects"][1]["fields"],
+            {"name": "name", "parent": p.pk},
+        )
+
+        # print(dump)
