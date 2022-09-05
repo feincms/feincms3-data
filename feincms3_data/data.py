@@ -121,6 +121,9 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
                                 field_name, []
                             )
 
+                    # _do_save changes the PK if the model is in
+                    # save_as_new_models
+                    seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
                     _do_save(
                         ds,
                         pk_map=save_as_new_pk_map,

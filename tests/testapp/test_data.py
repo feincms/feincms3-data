@@ -140,7 +140,7 @@ class DataTest(TransactionTestCase):
 
     def test_save_as_new_partial_graph(self):
         p1 = Parent.objects.create(name="blub-1")
-        c1 = p1.child1_set.create(name="blub-1-1")
+        p1.child1_set.create(name="blub-1-1")
 
         p2 = Parent.objects.create(name="blub-2")
         p2.child1_set.create(name="blub-2-1")
@@ -170,11 +170,8 @@ class DataTest(TransactionTestCase):
 
         self.assertEqual(
             parent_child1_set(),
-            [("blub-1", ["blub-1-1"]), ("blub-2", ["blub-2-1"])],
+            [("blub-1", ["blub-1-1", "blub-1-1"]), ("blub-2", ["blub-2-1"])],
         )
-
-        c1_new = p1.child1_set.get()
-        self.assertNotEqual(c1.pk, c1_new.pk)
 
     def test_save_as_new_full_graph(self):
         Parent.objects.create(name="other")
@@ -193,7 +190,6 @@ class DataTest(TransactionTestCase):
                 {
                     "filter": {"pk__in": [p1.pk]},
                     "save_as_new": True,
-                    "delete_missing": False,  # Do not remove old items
                 },
             ),
             *specs_for_derived_models(
@@ -201,7 +197,7 @@ class DataTest(TransactionTestCase):
                 {
                     "filter": {"parent__in": [p1.pk]},
                     "save_as_new": True,
-                    "delete_missing": False,  # Do not remove old items
+                    "delete_missing": True,  # Remove old child items
                 },
             ),
         ]

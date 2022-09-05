@@ -9,6 +9,14 @@ Change log
 
 - Fixed a crash when using nullable foreign keys to a model which uses
   ``save_as_new``.
+- Fix a behavior when using ``save_as_new`` together with ``delete_missing``:
+  When the parent of a model with both flags set is updated, the content is now
+  duplicated (because the old object hadn't been removed and the new one has
+  been saved according to ``save_as_new``). Previously, the old object has been
+  removed automatically. Worse, this made is impossible to use ``save_as_new``
+  for duplicating top-level objects (their object graph would be removed after
+  inserting the copy). This change may still be backwards incompatible for you
+  though, so better check twice.
 
 
 `0.2`_ (2022-09-02)
