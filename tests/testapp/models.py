@@ -27,4 +27,4 @@ class Child1(Child):
 
 
 class Child2(Child):
-    parent = models.ForeignKey(Parent, on_delete=models.CASCADE)
+    parent = models.ForeignKey(Parent, on_delete=models.PROTECT)

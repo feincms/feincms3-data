@@ -17,6 +17,8 @@ Change log
   for duplicating top-level objects (their object graph would be removed after
   inserting the copy). This change may still be backwards incompatible for you
   though, so better check twice.
+- Fixed deletion of missing objects in the presence of protected objects by
+  processing specs in reverse.
 
 
 `0.2`_ (2022-09-02)

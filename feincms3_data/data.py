@@ -133,7 +133,7 @@ def load_dump(data, *, progress=silence, ignorenonexistent=False):
 
             progress(f"Saved {len(objs)} {spec['model']} objects")
 
-        for spec in data["specs"]:
+        for spec in reversed(data["specs"]):
             if not spec.get("delete_missing"):
                 continue
 

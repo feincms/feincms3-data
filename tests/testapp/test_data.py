@@ -406,3 +406,14 @@ class DataTest(TransactionTestCase):
         load_dump(data)
 
         self.assertEqual(len(Tag.objects.all()), 2)
+
+    def test_should_delete_in_reverse(self):
+        p = Parent.objects.create()
+        p.child2_set.create()
+
+        specs = list(specs_for_app_models("testapp", {"delete_missing": True}))
+        data = json.loads(dump_specs(specs))
+
+        # Create a situation where the Child2 has to be deleted before Parent
+        Parent.objects.create().child2_set.create()
+        load_dump(data)
