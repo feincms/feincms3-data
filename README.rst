@@ -64,6 +64,7 @@ dump, e.g. in a module named ``app.f3datasets``:
                     "delete_missing": True,
                 },
             ),
+            # All derived non-abstract models which aren't proxies:
             *specs_for_derived_models(
                 world_models.ExercisePlugin,
                 {

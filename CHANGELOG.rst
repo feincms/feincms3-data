@@ -19,6 +19,8 @@ Change log
   though, so better check twice.
 - Fixed deletion of missing objects in the presence of protected objects by
   processing specs in reverse.
+- Changed ``specs_for_derived_models`` to skip proxy models instead of skipping
+  unmanaged models.
 
 
 `0.2`_ (2022-09-02)

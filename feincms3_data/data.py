@@ -25,7 +25,7 @@ def _all_subclasses(cls):
 
 def _only_concrete_models(iterable):
     for model in iterable:
-        if not model._meta.abstract and model._meta.managed:
+        if not model._meta.abstract and not model._meta.proxy:
             yield model
 
 
