@@ -7,6 +7,9 @@ Change log
 
 .. _Next version: https://github.com/matthiask/feincms3-data/compare/0.2...main
 
+- Fixed a crash when using nullable foreign keys to a model which uses
+  ``save_as_new``.
+
 
 `0.2`_ (2022-09-02)
 ~~~~~~~~~~~~~~~~~~~

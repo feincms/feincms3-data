@@ -398,3 +398,15 @@ class DataTest(TransactionTestCase):
 
         data = json.loads(dump_specs(specs))
         self.assertEqual(len(data["objects"]), 3)
+
+    def test_nullable_fk_save_as_new(self):
+        specs = [
+            *specs_for_models([Tag], {"save_as_new": True}),
+        ]
+
+        Tag.objects.create(name="test")
+
+        data = json.loads(dump_specs(specs))
+        load_dump(data)
+
+        self.assertEqual(len(Tag.objects.all()), 2)

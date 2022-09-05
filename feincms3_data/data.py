@@ -162,14 +162,9 @@ def _do_save(ds, *, pk_map, save_as_new_models):
             f.concrete
             and f.related_model
             and f.related_model._meta.label_lower in save_as_new_models
+            and (fk := getattr(ds.object, f.column)) is not None
         ):
-            # XXX Do this unconditionally until we find a reason
-            # if getattr(ds.object, f.column) in pk_map[f.related_model]:
-            setattr(
-                ds.object,
-                f.name,
-                pk_map[f.related_model][getattr(ds.object, f.column)],
-            )
+            setattr(ds.object, f.name, pk_map[f.related_model][fk])
 
     if ds.object._meta.label_lower in save_as_new_models:
         # Do the saving
