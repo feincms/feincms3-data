@@ -21,6 +21,7 @@ Change log
   processing specs in reverse.
 - Changed ``specs_for_derived_models`` to skip proxy models instead of skipping
   unmanaged models.
+- Started deferring constraints and resetting sequences when loading dumps.
 
 
 `0.2`_ (2022-09-02)
