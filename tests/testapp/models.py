@@ -28,3 +28,8 @@ class Child1(Child):
 
 class Child2(Child):
     parent = models.ForeignKey(Parent, on_delete=models.PROTECT)
+
+
+class Related(models.Model):
+    name = models.CharField(default="name", max_length=20)
+    related_to = models.ForeignKey(Parent, on_delete=models.CASCADE, null=True)

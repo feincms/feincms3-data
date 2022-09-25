@@ -2,7 +2,7 @@ import json
 
 from django.db import models
 from django.test import TransactionTestCase
-from testapp.models import Child, Child1, Parent, Tag
+from testapp.models import Child, Child1, Parent, Related, Tag
 
 from feincms3_data.data import (
     InvalidSpec,
@@ -31,6 +31,17 @@ def parent_tags():
     }
 
 
+def parent_names():
+    return list(Parent.objects.values_list("name", flat=True))
+
+
+def related_names():
+    return [
+        (related.name, related.related_to.name if related.related_to else None)
+        for related in Related.objects.all()
+    ]
+
+
 class DataTest(TransactionTestCase):
     def test_invalid_spec_missing_model(self):
         with self.assertRaises(InvalidSpec) as cm:
@@ -52,6 +63,7 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.parent"},
                         {"model": "testapp.child1"},
                         {"model": "testapp.child2"},
+                        {"model": "testapp.related"},
                     ]
                 }
             },
@@ -75,6 +87,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.child1", "delete_missing": True},
                 {"model": "testapp.child2", "delete_missing": True},
                 {"model": "testapp.tag", "delete_missing": True},
+                {"model": "testapp.related", "delete_missing": True},
             ],
         )
 
@@ -331,6 +344,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.child1"},
                 {"model": "testapp.child2"},
                 {"model": "testapp.tag"},
+                {"model": "testapp.related"},
             ],
         )
 
@@ -417,3 +431,82 @@ class DataTest(TransactionTestCase):
         # Create a situation where the Child2 has to be deleted before Parent
         Parent.objects.create().child2_set.create()
         load_dump(data)
+
+    def test_same_model_with_pks_and_null_relation(self):
+        """
+        Dumping and loading a model with several specs doesn't lose data
+
+        ``related_to__in=[None, 3]`` doesn't work because Django doesn't want
+        to return anything for ``__in=[None]` queries, and neither does
+        ``related_to_id__in=[None, 3]`` which is especially surprising to me.
+
+        This test makes me sleep better because it verifies that we can have
+        specs for the same model with ``delete_missing``, once with the list of
+        primary keys and once with ``__isnull=True`` and not lose data
+        unexpectedly (if the test is correct).
+        """
+        p1 = Parent.objects.create(name="p1")
+        p2 = Parent.objects.create(name="p2")
+        p3 = Parent.objects.create(name="p3")
+
+        r1 = Related.objects.create(name="t1", related_to=p1)
+        rx = Related.objects.create(name="rx", related_to=None)
+        ry = Related.objects.create(name="ry", related_to=None)
+
+        specs = [
+            *specs_for_models(
+                [Parent],
+                {
+                    "filter": {"pk__in": [p1.pk, p2.pk]},
+                    "delete_missing": True,
+                },
+            ),
+            *specs_for_models(
+                [Related],
+                {
+                    "filter": {"related_to__in": [p1.pk, p2.pk]},
+                    "delete_missing": True,
+                },
+            ),
+            *specs_for_models(
+                [Related],
+                {
+                    "filter": {"related_to__isnull": True},
+                    "delete_missing": True,
+                },
+            ),
+        ]
+
+        data = json.loads(dump_specs(specs))
+
+        load_dump(data)
+        self.assertCountEqual(
+            parent_names(),
+            ["p1", "p2", "p3"],
+        )
+        self.assertCountEqual(
+            related_names(),
+            [("t1", "p1"), ("rx", None), ("ry", None)],
+        )
+
+        r1.related_to = None
+        r1.save()
+        rx.related_to = p3
+        rx.save()
+        ry.related_to = p1
+        ry.save()
+
+        Related.objects.create(name="rz", related_to=p1)
+
+        p4 = Parent.objects.create(name="p4")
+        Related.objects.create(name="r4", related_to=p4)
+
+        load_dump(data)
+        self.assertCountEqual(
+            parent_names(),
+            ["p1", "p2", "p3", "p4"],
+        )
+        self.assertCountEqual(
+            related_names(),
+            [("t1", "p1"), ("rx", None), ("ry", None), ("r4", "p4")],
+        )
