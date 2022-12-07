@@ -570,4 +570,6 @@ class DataTest(TransactionTestCase):
         u.delete()
         UniqueSlug.objects.create(slug="abc")
 
+        # Deferring unique constraint checking isn't sufficient it seems.
+        # (Doesn't work on PostgreSQL either.)
         load_dump(dump)
