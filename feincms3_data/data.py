@@ -116,59 +116,91 @@ def load_dump(
 
     with transaction.atomic(using=using):
         connection = connections[using]
-        models = set()
         with connection.constraint_checks_disabled():
-            for spec in data["specs"]:
-                if objs := objects[spec["model"]]:
-                    for ds in objs:
-                        if ignore_missing_m2m := spec.get("ignore_missing_m2m"):
-                            for field_name in ignore_missing_m2m:
-                                ignore_missing_m2m_data[ds][
-                                    field_name
-                                ] = ds.m2m_data.pop(field_name, [])
+            models = set()
+            _load_dump(
+                data,
+                objects,
+                progress,
+                seen_pks,
+                save_as_new_pk_map,
+                save_as_new_models,
+                ignore_missing_m2m_data,
+                models,
+            )
+            _finalize(
+                progress,
+                connection,
+                models,
+            )
 
-                        # _do_save changes the PK if the model is in
-                        # save_as_new_models
-                        seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
-                        _do_save(
-                            ds,
-                            pk_map=save_as_new_pk_map,
-                            save_as_new_models=save_as_new_models,
-                        )
-                        seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
-                        models.add(ds.object.__class__)
 
-                progress(f"Saved {len(objs)} {spec['model']} objects")
+def _load_dump(
+    data,
+    objects,
+    progress,
+    seen_pks,
+    save_as_new_pk_map,
+    save_as_new_models,
+    ignore_missing_m2m_data,
+    models,
+):
+    for spec in data["specs"]:
+        if objs := objects[spec["model"]]:
+            for ds in objs:
+                for field_name in spec.get("ignore_missing_m2m", ()):
+                    ignore_missing_m2m_data[ds][field_name] = ds.m2m_data.pop(
+                        field_name, []
+                    )
 
-            for spec in reversed(data["specs"]):
-                if not spec.get("delete_missing"):
-                    continue
+                # _do_save changes the PK if the model is in
+                # save_as_new_models
+                seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
+                _do_save(
+                    ds,
+                    pk_map=save_as_new_pk_map,
+                    save_as_new_models=save_as_new_models,
+                )
+                seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
+                models.add(ds.object.__class__)
 
-                queryset = _model_queryset(spec)
-                deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
-                if deleted[0]:
-                    progress(f"Deleted {spec['model']} objects: {deleted}")
+        progress(f"Saved {len(objs)} {spec['model']} objects")
 
-            pks = pk_cache()
-            for ds, lists in ignore_missing_m2m_data.items():
-                for field_name, field_pks in lists.items():
-                    field = ds.object._meta.get_field(field_name)
-                    existing = pks(field.related_model)
-                    getattr(ds.object, field_name).set(set(field_pks) & existing)
+    for spec in reversed(data["specs"]):
+        if not spec.get("delete_missing"):
+            continue
 
-            table_names = [model._meta.db_table for model in models]
-            try:
-                connection.check_constraints(table_names=table_names)
-            except Exception as e:
-                e.args = ("Problem installing fixtures: %s" % e,)
-                raise
+        queryset = _model_queryset(spec)
+        deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
+        if deleted[0]:
+            progress(f"Deleted {spec['model']} objects: {deleted}")
 
-            sequence_sql = connection.ops.sequence_reset_sql(no_style(), models)
-            if sequence_sql:
-                progress("Resetting sequences")
-                with connection.cursor() as cursor:
-                    for line in sequence_sql:
-                        cursor.execute(line)
+    pks = pk_cache()
+    for ds, lists in ignore_missing_m2m_data.items():
+        for field_name, field_pks in lists.items():
+            field = ds.object._meta.get_field(field_name)
+            existing = pks(field.related_model)
+            getattr(ds.object, field_name).set(set(field_pks) & existing)
+
+
+def _finalize(
+    progress,
+    connection,
+    models,
+):
+    table_names = [model._meta.db_table for model in models]
+    try:
+        connection.check_constraints(table_names=table_names)
+    except Exception as e:
+        e.args = ("Problem installing fixtures: %s" % e,)
+        raise
+
+    sequence_sql = connection.ops.sequence_reset_sql(no_style(), models)
+    if sequence_sql:
+        progress("Resetting sequences")
+        with connection.cursor() as cursor:
+            for line in sequence_sql:
+                cursor.execute(line)
 
 
 def pk_cache():
