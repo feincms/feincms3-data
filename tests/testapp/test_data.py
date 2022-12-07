@@ -510,3 +510,47 @@ class DataTest(TransactionTestCase):
             related_names(),
             [("t1", "p1"), ("rx", None), ("ry", None), ("r4", "p4")],
         )
+
+    def test_some_children_with_common_parent(self):
+        """
+        The idea is to check what happens when dumping and loading models from
+        the "child" side. "Parent" isn't a good name for this example, a b
+        etter fit would be "Theme" or some other thing which is reused between
+        children.
+        """
+
+        p1 = Parent.objects.create(name="parent1")
+        p2 = Parent.objects.create(name="parent2")
+
+        c1_p1 = p1.child1_set.create(name="c1_p1")
+        p1.child1_set.create(name="c2_p1")
+        p2.child1_set.create(name="c1_p2")
+
+        self.assertCountEqual(
+            parent_child1_set(),
+            [("parent1", ["c1_p1", "c2_p1"]), ("parent2", ["c1_p2"])],
+        )
+
+        def create_specs(child_pks):
+            parent_pks = list(
+                Child1.objects.filter(pk__in=child_pks).values_list("parent", flat=True)
+            )
+            return [
+                *specs_for_models([Child1], {"filter": {"pk__in": child_pks}}),
+                *specs_for_models([Parent], {"filter": {"pk__in": parent_pks}}),
+            ]
+
+        specs = create_specs([c1_p1.pk])
+        dump = json.loads(dump_specs(specs))
+
+        # from pprint import pprint
+        # pprint(dump)
+
+        c1_p1.delete()
+        p1.child1_set.create(name="c3_p1")
+
+        load_dump(dump)
+        self.assertCountEqual(
+            parent_child1_set(),
+            [("parent1", ["c1_p1", "c2_p1", "c3_p1"]), ("parent2", ["c1_p2"])],
+        )
