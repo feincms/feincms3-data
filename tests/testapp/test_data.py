@@ -1,8 +1,9 @@
 import json
+from unittest import expectedFailure
 
 from django.db import models
 from django.test import TransactionTestCase
-from testapp.models import Child, Child1, Parent, Related, Tag
+from testapp.models import Child, Child1, Parent, Related, Tag, UniqueSlug
 
 from feincms3_data.data import (
     InvalidSpec,
@@ -64,6 +65,7 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.child1"},
                         {"model": "testapp.child2"},
                         {"model": "testapp.related"},
+                        {"model": "testapp.uniqueslug"},
                     ]
                 }
             },
@@ -88,6 +90,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.child2", "delete_missing": True},
                 {"model": "testapp.tag", "delete_missing": True},
                 {"model": "testapp.related", "delete_missing": True},
+                {"model": "testapp.uniqueslug", "delete_missing": True},
             ],
         )
 
@@ -345,6 +348,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.child2"},
                 {"model": "testapp.tag"},
                 {"model": "testapp.related"},
+                {"model": "testapp.uniqueslug"},
             ],
         )
 
@@ -554,3 +558,16 @@ class DataTest(TransactionTestCase):
             parent_child1_set(),
             [("parent1", ["c1_p1", "c2_p1", "c3_p1"]), ("parent2", ["c1_p2"])],
         )
+
+    @expectedFailure
+    def test_unique_slug(self):
+        u = UniqueSlug.objects.create(slug="abc")
+        UniqueSlug.objects.create(slug="def")
+
+        specs = [*specs_for_models([UniqueSlug], {"delete_missing": True})]
+
+        dump = json.loads(dump_specs(specs))
+        u.delete()
+        UniqueSlug.objects.create(slug="abc")
+
+        load_dump(dump)
