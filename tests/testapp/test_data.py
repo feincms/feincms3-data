@@ -573,3 +573,27 @@ class DataTest(TransactionTestCase):
         # Deferring unique constraint checking isn't sufficient it seems.
         # (Doesn't work on PostgreSQL either.)
         load_dump(dump)
+
+    def test_cycles(self):
+        """t1 refers to t2 which doesn't exist yet at the time t1 is inserted"""
+        t1 = Tag.objects.create(name="t1")
+        t2 = Tag.objects.create(name="t2", parent=t1)
+        t1.parent = t2
+        t1.save()
+
+        specs = [*specs_for_models([Tag])]
+        dump = json.loads(dump_specs(specs))
+
+        Tag.objects.all().delete()
+        load_dump(dump)
+
+        specs = [*specs_for_models([Tag], {"save_as_new": True})]
+        dump = json.loads(dump_specs(specs))
+
+        Tag.objects.all().delete()
+        load_dump(dump)
+
+        self.assertCountEqual(
+            [[t.name, t.parent.name] for t in Tag.objects.select_related("parent")],
+            [["t1", "t2"], ["t2", "t1"]],
+        )

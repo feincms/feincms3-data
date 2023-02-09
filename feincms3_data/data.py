@@ -108,11 +108,9 @@ def load_dump(
 
     progress(f"Loaded {len(data['objects'])} objects")
 
-    save_as_new_pk_map = defaultdict(dict)
     save_as_new_models = {
         spec["model"] for spec in data["specs"] if spec.get("save_as_new")
     }
-    ignore_missing_m2m_data = defaultdict(dict)
 
     with transaction.atomic(using=using):
         connection = connections[using]
@@ -123,9 +121,7 @@ def load_dump(
                 objects,
                 progress,
                 seen_pks,
-                save_as_new_pk_map,
                 save_as_new_models,
-                ignore_missing_m2m_data,
                 models,
             )
             _finalize(
@@ -140,11 +136,13 @@ def _load_dump(
     objects,
     progress,
     seen_pks,
-    save_as_new_pk_map,
     save_as_new_models,
-    ignore_missing_m2m_data,
     models,
 ):
+    save_as_new_pk_map = defaultdict(dict)
+    ignore_missing_m2m_data = defaultdict(dict)
+    deferred_new_pks = []
+
     for spec in data["specs"]:
         if objs := objects[spec["model"]]:
             for ds in objs:
@@ -160,11 +158,14 @@ def _load_dump(
                     ds,
                     pk_map=save_as_new_pk_map,
                     save_as_new_models=save_as_new_models,
+                    deferred_new_pks=deferred_new_pks,
                 )
                 seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
                 models.add(ds.object.__class__)
 
         progress(f"Saved {len(objs)} {spec['model']} objects")
+
+    _save_deferred_new_pks(deferred_new_pks)
 
     for spec in reversed(data["specs"]):
         if not spec.get("delete_missing"):
@@ -181,6 +182,12 @@ def _load_dump(
             field = ds.object._meta.get_field(field_name)
             existing = pks(field.related_model)
             getattr(ds.object, field_name).set(set(field_pks) & existing)
+
+
+def _save_deferred_new_pks(deferred_new_pks):
+    for ds, f_name, pk_map, fk in deferred_new_pks:
+        setattr(ds.object, f_name, pk_map[fk])
+        ds.save()
 
 
 def _finalize(
@@ -211,7 +218,10 @@ def pk_cache():
     return pks
 
 
-def _do_save(ds, *, pk_map, save_as_new_models):
+_sentinel = object()
+
+
+def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks):
     # Map old PKs to new
     for f in ds.object._meta.get_fields():
         if (
@@ -220,7 +230,13 @@ def _do_save(ds, *, pk_map, save_as_new_models):
             and f.related_model._meta.label_lower in save_as_new_models
             and (fk := getattr(ds.object, f.column)) is not None
         ):
-            setattr(ds.object, f.name, pk_map[f.related_model][fk])
+            if (new_pk := pk_map[f.related_model].get(fk, _sentinel)) is not _sentinel:
+                setattr(ds.object, f.name, new_pk)
+            else:
+                # If foreign key isn't nullable we're toast.
+                setattr(ds.object, f.name, None)
+                # But if it is, we can defer.
+                deferred_new_pks.append((ds, f.name, pk_map[f.related_model], fk))
 
     if ds.object._meta.label_lower in save_as_new_models:
         # Do the saving

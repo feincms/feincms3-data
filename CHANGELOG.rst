@@ -8,6 +8,8 @@ Change log
 .. _Next version: https://github.com/matthiask/feincms3-data/compare/0.3...main
 
 - Added Django 4.2a1 to the CI matrix.
+- Allowed data loading with ``save_as_new`` to work in more scenarios where the
+  data contains cyclic dependencies.
 
 
 `0.3`_ (2022-09-19)
