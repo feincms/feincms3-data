@@ -5,8 +5,18 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/feincms3-data/compare/0.3...main
+.. _Next version: https://github.com/matthiask/feincms3-data/compare/0.4...main
 
+
+`0.4`_ (2023-02-13)
+~~~~~~~~~~~~~~~~~~~
+
+.. _0.4: https://github.com/matthiask/feincms3-data/compare/0.3...0.4
+
+- Added various tests for expected behavior.
+- Refactored ``load_dump`` to pass the code complexity checker.
+- Added an expected failure test which shows that handling unique fields isn't
+  yet working in all cases.
 - Added Django 4.2a1 to the CI matrix.
 - Allowed data loading with ``save_as_new`` to work in more scenarios where the
   data contains cyclic dependencies.
