@@ -11,6 +11,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "dataset",
             help=f"Model dataset which should be dumped. {', '.join(DATASETS)}",
+            choices=DATASETS,
         )
 
     def handle(self, *args, **options):

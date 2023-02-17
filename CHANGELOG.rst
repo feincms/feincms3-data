@@ -7,6 +7,9 @@ Change log
 
 .. _Next version: https://github.com/matthiask/feincms3-data/compare/0.4...main
 
+- Added argument validation to ``./manage.py f3dumpdata`` instead of crashing
+  when the dataset isn't known.
+
 
 `0.4`_ (2023-02-13)
 ~~~~~~~~~~~~~~~~~~~
