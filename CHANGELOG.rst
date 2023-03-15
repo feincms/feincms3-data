@@ -9,6 +9,11 @@ Change log
 
 - Added argument validation to ``./manage.py f3dumpdata`` instead of crashing
   when the dataset isn't known.
+- Added the ``defer_values`` spec field which allows specifying a list of
+  fields whose real values should be deferred and only saved after missing data
+  has been deleted. This is especially useful when you have unique fields where
+  partial updates could produce constraint validation errors (unique
+  constraints cannot be deferred it seems).
 
 
 `0.4`_ (2023-02-13)

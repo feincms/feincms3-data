@@ -1,5 +1,4 @@
 import json
-from unittest import expectedFailure
 
 from django.db import models
 from django.test import TransactionTestCase
@@ -559,12 +558,15 @@ class DataTest(TransactionTestCase):
             [("parent1", ["c1_p1", "c2_p1", "c3_p1"]), ("parent2", ["c1_p2"])],
         )
 
-    @expectedFailure
     def test_unique_slug(self):
         u = UniqueSlug.objects.create(slug="abc")
         UniqueSlug.objects.create(slug="def")
 
-        specs = [*specs_for_models([UniqueSlug], {"delete_missing": True})]
+        specs = [
+            *specs_for_models(
+                [UniqueSlug], {"delete_missing": True, "defer_values": ["slug"]}
+            )
+        ]
 
         dump = json.loads(dump_specs(specs))
         u.delete()

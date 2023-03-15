@@ -140,6 +140,9 @@ Model specs consist of the following fields:
 - ``"save_as_new"``: If present and truish, objects are inserted using new
   primary keys into the database instead of (potentially) overwriting
   pre-existing objects.
+- ``"defer_values"``: A list of fields which should receive random garbage when
+  loading initially and only receive their real value later. This is especially
+  useful to avoid unique constraint errors when loading partial graphs.
 
 The dumps can be loaded back into the database by running::
 

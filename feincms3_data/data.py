@@ -2,13 +2,14 @@ import io
 import json
 from collections import defaultdict
 from functools import lru_cache
-from itertools import chain
+from itertools import chain, count
 
 from django.apps import apps
 from django.conf import settings
 from django.core import serializers
 from django.core.management.color import no_style
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
+from django.utils.crypto import get_random_string
 from django.utils.module_loading import import_string
 
 from feincms3_data.serializers import JSONSerializer
@@ -30,6 +31,13 @@ def _only_concrete_models(iterable):
             yield model
 
 
+def _random_values():
+    """Generate a stream of values which are unlikely to cause conflicts"""
+    prefix = get_random_string(20)
+    for i in count():
+        yield f"{prefix}-{i}"
+
+
 class InvalidSpec(Exception):
     pass
 
@@ -41,6 +49,7 @@ _valid_keys = {
     "delete_missing",
     "ignore_missing_m2m",
     "save_as_new",
+    "defer_values",
 }
 
 
@@ -142,6 +151,7 @@ def _load_dump(
     save_as_new_pk_map = defaultdict(dict)
     ignore_missing_m2m_data = defaultdict(dict)
     deferred_new_pks = []
+    deferred_values = []
 
     for spec in data["specs"]:
         if objs := objects[spec["model"]]:
@@ -150,6 +160,13 @@ def _load_dump(
                     ignore_missing_m2m_data[ds][field_name] = ds.m2m_data.pop(
                         field_name, []
                     )
+
+                random_value = _random_values()
+                for field_name in spec.get("defer_values", ()):
+                    deferred_values.append(
+                        (ds, field_name, getattr(ds.object, field_name))
+                    )
+                    setattr(ds.object, field_name, next(random_value))
 
                 # _do_save changes the PK if the model is in
                 # save_as_new_models
@@ -182,6 +199,10 @@ def _load_dump(
             field = ds.object._meta.get_field(field_name)
             existing = pks(field.related_model)
             getattr(ds.object, field_name).set(set(field_pks) & existing)
+
+    for ds, field_name, value in deferred_values:
+        setattr(ds.object, field_name, value)
+        ds.save()
 
 
 def _save_deferred_new_pks(deferred_new_pks):
