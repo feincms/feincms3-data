@@ -5,7 +5,13 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/feincms3-data/compare/0.4...main
+.. _Next version: https://github.com/matthiask/feincms3-data/compare/0.5...main
+
+
+`0.5`_ (2023-03-15)
+~~~~~~~~~~~~~~~~~~~
+
+.. _0.5: https://github.com/matthiask/feincms3-data/compare/0.4...0.5
 
 - Added argument validation to ``./manage.py f3dumpdata`` instead of crashing
   when the dataset isn't known.
