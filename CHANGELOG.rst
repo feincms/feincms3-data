@@ -7,6 +7,8 @@ Change log
 
 .. _Next version: https://github.com/matthiask/feincms3-data/compare/0.5...main
 
+- Fixed the broken argument validation of ``./manage.py f3dumpdata``.
+
 
 `0.5`_ (2023-03-15)
 ~~~~~~~~~~~~~~~~~~~
