@@ -572,9 +572,12 @@ class DataTest(TransactionTestCase):
         u.delete()
         UniqueSlug.objects.create(slug="abc")
 
-        # Deferring unique constraint checking isn't sufficient it seems.
-        # (Doesn't work on PostgreSQL either.)
         load_dump(dump)
+
+        self.assertCountEqual(
+            [u.slug for u in UniqueSlug.objects.all()],
+            ["abc", "def"],
+        )
 
     def test_cycles(self):
         """t1 refers to t2 which doesn't exist yet at the time t1 is inserted"""
