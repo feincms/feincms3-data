@@ -20,5 +20,5 @@ class Command(BaseCommand):
         except KeyError:
             raise CommandError(
                 f"Invalid dataset {dataset}; should be one of {', '.join(DATASETS)}"
-            )
+            ) from None
         self.stdout.write(dump_specs(ds["specs"](args), mappers=ds.get("mappers")))

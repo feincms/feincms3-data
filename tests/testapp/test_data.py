@@ -2,7 +2,6 @@ import json
 
 from django.db import models
 from django.test import TransactionTestCase
-from testapp.models import Child, Child1, Parent, Related, Tag, UniqueSlug
 
 from feincms3_data.data import (
     InvalidSpec,
@@ -15,6 +14,7 @@ from feincms3_data.data import (
     specs_for_derived_models,
     specs_for_models,
 )
+from testapp.models import Child, Child1, Parent, Related, Tag, UniqueSlug
 
 
 def parent_child1_set():
