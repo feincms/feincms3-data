@@ -14,7 +14,15 @@ from feincms3_data.data import (
     specs_for_derived_models,
     specs_for_models,
 )
-from testapp.models import Child, Child1, Parent, Related, Tag, UniqueSlug
+from testapp.models import (
+    Child,
+    Child1,
+    Parent,
+    Related,
+    Tag,
+    UniqueSlug,
+    UniqueSlugMTI,
+)
 
 
 def parent_child1_set():
@@ -65,6 +73,7 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.child2"},
                         {"model": "testapp.related"},
                         {"model": "testapp.uniqueslug"},
+                        {"model": "testapp.uniqueslugmti"},
                     ]
                 }
             },
@@ -90,6 +99,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.tag", "delete_missing": True},
                 {"model": "testapp.related", "delete_missing": True},
                 {"model": "testapp.uniqueslug", "delete_missing": True},
+                {"model": "testapp.uniqueslugmti", "delete_missing": True},
             ],
         )
 
@@ -348,6 +358,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.tag"},
                 {"model": "testapp.related"},
                 {"model": "testapp.uniqueslug"},
+                {"model": "testapp.uniqueslugmti"},
             ],
         )
 
@@ -601,4 +612,34 @@ class DataTest(TransactionTestCase):
         self.assertCountEqual(
             [[t.name, t.parent.name] for t in Tag.objects.select_related("parent")],
             [["t1", "t2"], ["t2", "t1"]],
+        )
+
+    def test_mti(self):
+        """multi-table inheritance tests"""
+
+        t1 = UniqueSlugMTI.objects.create(slug="t1")
+        t2 = UniqueSlugMTI.objects.create(slug="t2")
+
+        specs = [
+            *specs_for_models(
+                [UniqueSlug],
+                {"delete_missing": True, "defer_values": ["slug"]},
+            ),
+            *specs_for_models(
+                [UniqueSlugMTI],
+                {"delete_missing": True},
+            ),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        # from pprint import pp; print(); pp(dump)
+
+        self.assertCountEqual(
+            dump["objects"],
+            [
+                {"model": "testapp.uniqueslug", "pk": t1.pk, "fields": {"slug": "t1"}},
+                {"model": "testapp.uniqueslug", "pk": t2.pk, "fields": {"slug": "t2"}},
+                {"model": "testapp.uniqueslugmti", "pk": t1.pk, "fields": {}},
+                {"model": "testapp.uniqueslugmti", "pk": t2.pk, "fields": {}},
+            ],
         )
