@@ -42,7 +42,7 @@ class InvalidVersionError(Exception):
     pass
 
 
-class InvalidSpec(Exception):
+class InvalidSpecError(Exception):
     pass
 
 
@@ -59,9 +59,9 @@ _valid_keys = {
 
 def _validate_spec(spec):
     if "model" not in spec:
-        raise InvalidSpec(f"The spec {spec!r} requires a 'model' key")
+        raise InvalidSpecError(f"The spec {spec!r} requires a 'model' key")
     if unknown := (set(spec.keys()) - _valid_keys):
-        raise InvalidSpec(f"The spec {spec!r} contains unknown keys: {unknown!r}")
+        raise InvalidSpecError(f"The spec {spec!r} contains unknown keys: {unknown!r}")
     return spec
 
 

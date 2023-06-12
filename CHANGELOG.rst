@@ -10,6 +10,9 @@ Change log
 - Fixed the broken argument validation of ``./manage.py f3dumpdata``.
 - Switched to hatchling and ruff.
 - Made ``specs_for_*_models`` helpers return a list instead of a generator.
+- Changed the ``assert`` statement for checking the dump version into a
+  ``raise`` statement since assertions could be optimized out.
+- Renamed ``InvalidSpec`` to ``InvalidSpecError`` to make ruff happier.
 
 
 `0.5`_ (2023-03-15)

@@ -4,7 +4,7 @@ from django.db import models
 from django.test import TransactionTestCase
 
 from feincms3_data.data import (
-    InvalidSpec,
+    InvalidSpecError,
     InvalidVersionError,
     _validate_spec,
     datasets,
@@ -53,12 +53,12 @@ def related_names():
 
 class DataTest(TransactionTestCase):
     def test_invalid_spec_missing_model(self):
-        with self.assertRaises(InvalidSpec) as cm:
+        with self.assertRaises(InvalidSpecError) as cm:
             _validate_spec({})
         self.assertIn("requires a 'model' key", str(cm.exception))
 
     def test_invalid_spec_unknown_keys(self):
-        with self.assertRaises(InvalidSpec) as cm:
+        with self.assertRaises(InvalidSpecError) as cm:
             specs_for_models([Parent], {"hello": "world"})
         self.assertIn("contains unknown keys: {'hello'}", str(cm.exception))
 
@@ -394,7 +394,7 @@ class DataTest(TransactionTestCase):
         with self.assertRaises(InvalidVersionError):
             load_dump({"version": -1})
 
-        with self.assertRaises(InvalidSpec):
+        with self.assertRaises(InvalidSpecError):
             load_dump(
                 {
                     "version": 1,
