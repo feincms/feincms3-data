@@ -5,6 +5,7 @@ from django.test import TransactionTestCase
 
 from feincms3_data.data import (
     InvalidSpec,
+    InvalidVersionError,
     _validate_spec,
     datasets,
     dump_specs,
@@ -390,7 +391,7 @@ class DataTest(TransactionTestCase):
         # print(dump)
 
     def test_invalid_dumps(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(InvalidVersionError):
             load_dump({"version": -1})
 
         with self.assertRaises(InvalidSpec):

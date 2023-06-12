@@ -38,6 +38,10 @@ def _random_values():
         yield f"{prefix}-{i}"
 
 
+class InvalidVersionError(Exception):
+    pass
+
+
 class InvalidSpec(Exception):
     pass
 
@@ -102,7 +106,8 @@ def dump_specs(specs, *, mappers=None):
 def load_dump(
     data, *, progress=silence, ignorenonexistent=False, using=DEFAULT_DB_ALIAS
 ):
-    assert data["version"] == 1
+    if data["version"] != 1:
+        raise InvalidVersionError(f"Invalid dump version {data.get('version')!r}")
     for spec in data["specs"]:
         _validate_spec(spec)
 
