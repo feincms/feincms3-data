@@ -80,8 +80,8 @@ def specs_for_app_models(app, spec=None):
 
 def _model_queryset(spec):
     queryset = apps.get_model(spec["model"])._default_manager.all()
-    if filter := spec.get("filter"):
-        queryset = queryset.filter(**filter)
+    if f := spec.get("filter"):
+        queryset = queryset.filter(**f)
     return queryset
 
 
@@ -144,7 +144,7 @@ def load_dump(
             )
 
 
-def _load_dump(
+def _load_dump(  # noqa: PLR0913
     data,
     objects,
     progress,
