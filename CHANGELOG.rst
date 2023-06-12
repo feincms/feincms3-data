@@ -9,6 +9,7 @@ Change log
 
 - Fixed the broken argument validation of ``./manage.py f3dumpdata``.
 - Switched to hatchling and ruff.
+- Made ``specs_for_*_models`` helpers return a list instead of a generator.
 
 
 `0.5`_ (2023-03-15)

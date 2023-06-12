@@ -58,7 +58,7 @@ class DataTest(TransactionTestCase):
 
     def test_invalid_spec_unknown_keys(self):
         with self.assertRaises(InvalidSpec) as cm:
-            list(specs_for_models([Parent], {"hello": "world"}))
+            specs_for_models([Parent], {"hello": "world"})
         self.assertIn("contains unknown keys: {'hello'}", str(cm.exception))
 
     def test_datasets(self):
@@ -80,7 +80,7 @@ class DataTest(TransactionTestCase):
         )
 
     def test_specs_for_derived_models(self):
-        specs = list(specs_for_derived_models(models.Model))
+        specs = specs_for_derived_models(models.Model)
 
         self.assertIn({"model": "auth.user"}, specs)
         self.assertIn({"model": "testapp.parent"}, specs)
@@ -88,7 +88,7 @@ class DataTest(TransactionTestCase):
         self.assertNotIn({"model": "testapp.child"}, specs)
 
     def test_specs_for_app_models(self):
-        specs = list(specs_for_app_models("testapp", {"delete_missing": True}))
+        specs = specs_for_app_models("testapp", {"delete_missing": True})
 
         self.assertCountEqual(
             specs,
@@ -347,7 +347,7 @@ class DataTest(TransactionTestCase):
             self.assertEqual(pks(Parent), set())
 
     def test_mappers(self):
-        specs = list(specs_for_app_models("testapp"))
+        specs = specs_for_app_models("testapp")
 
         self.assertCountEqual(
             specs,
@@ -439,7 +439,7 @@ class DataTest(TransactionTestCase):
         p = Parent.objects.create()
         p.child2_set.create()
 
-        specs = list(specs_for_app_models("testapp", {"delete_missing": True}))
+        specs = specs_for_app_models("testapp", {"delete_missing": True})
         data = json.loads(dump_specs(specs))
 
         # Create a situation where the Child2 has to be deleted before Parent
