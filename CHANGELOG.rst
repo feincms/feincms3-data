@@ -13,6 +13,8 @@ Change log
 - Changed the ``assert`` statement for checking the dump version into a
   ``raise`` statement since assertions could be optimized out.
 - Renamed ``InvalidSpec`` to ``InvalidSpecError`` to make ruff happier.
+- Added an ``objects`` argument to ``dump_specs`` which allows overriding the
+  list of objects to dump.
 
 
 `0.5`_ (2023-03-15)

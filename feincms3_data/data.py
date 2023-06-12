@@ -89,16 +89,15 @@ def silence(*a):
     pass
 
 
-def dump_specs(specs, *, mappers=None):
+def dump_specs(specs, *, mappers=None, objects=None):
     stream = io.StringIO()
     stream.write('{"version": 1, "specs": ')
     json.dump(specs, stream)
     stream.write(', "objects": ')
     serializer = JSONSerializer(mappers=mappers or {})
-    serializer.serialize(
-        chain.from_iterable(_model_queryset(spec) for spec in specs),
-        stream=stream,
-    )
+    if objects is None:
+        objects = chain.from_iterable(_model_queryset(spec) for spec in specs)
+    serializer.serialize(objects, stream=stream)
     stream.write("}")
     return stream.getvalue()
 
