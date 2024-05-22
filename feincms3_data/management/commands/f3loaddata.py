@@ -1,4 +1,5 @@
 import json
+import sys
 
 from django.core.management.base import BaseCommand
 
@@ -22,8 +23,11 @@ class Command(BaseCommand):
 
     def handle(self, *dumps, **options):
         for dump in dumps:
-            with open(dump, encoding="utf-8") as f:
-                data = json.load(f)
+            if dump == "-":
+                data = json.loads(sys.stdin.read())
+            else:
+                with open(dump, encoding="utf-8") as f:
+                    data = json.load(f)
             load_dump(
                 data,
                 progress=self.stderr.write if options["verbosity"] >= 2 else silence,

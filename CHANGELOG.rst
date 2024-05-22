@@ -5,6 +5,8 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Added ``./manage.py f3dumpdata -`` which allows reading JSON data from stdin.
+
 
 0.6 (2023-06-12)
 ~~~~~~~~~~~~~~~~
