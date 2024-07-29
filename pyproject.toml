@@ -75,7 +75,9 @@ lint.extend-select = [
   # flake8-pie
   "PIE",
   # pylint
-  "PL",
+  "PLC",
+  "PLE",
+  "PLW",
   # unused noqa
   "RUF100",
   # flake8-simplify
@@ -91,6 +93,8 @@ lint.extend-ignore = [
   "B905",
   # No line length errors
   "E501",
+  # Who cares
+  "UP031",
 ]
 lint.per-file-ignores."*/migrat*/*" = [
   # Allow using PascalCase model names in migrations

@@ -144,7 +144,7 @@ def load_dump(
             )
 
 
-def _load_dump(  # noqa: PLR0913
+def _load_dump(
     data,
     objects,
     progress,
