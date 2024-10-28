@@ -6,7 +6,7 @@ Change log
 ~~~~~~~~~~~~~~~
 
 - Added ``./manage.py f3dumpdata -`` which allows reading JSON data from stdin.
-- Added Python 3.12 and Django 5.0.
+- Added Python 3.12, 3.13 and Django 5.0, 5.1.
 - Order objects by their primary key when dumping specs. This helps with
   comparing JSON files by hand.
 
