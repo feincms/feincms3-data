@@ -79,7 +79,7 @@ def specs_for_app_models(app, spec=None):
 
 
 def _model_queryset(spec):
-    queryset = apps.get_model(spec["model"])._default_manager.all()
+    queryset = apps.get_model(spec["model"])._default_manager.order_by("pk")
     if f := spec.get("filter"):
         queryset = queryset.filter(**f)
     return queryset
