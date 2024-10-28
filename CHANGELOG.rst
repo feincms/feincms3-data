@@ -2,8 +2,12 @@
 Change log
 ==========
 
-`Next version`_
-~~~~~~~~~~~~~~~
+Next version
+~~~~~~~~~~~~
+
+
+0.7 (2024-10-28)
+~~~~~~~~~~~~~~~~
 
 - Added ``./manage.py f3dumpdata -`` which allows reading JSON data from stdin.
 - Added Python 3.12, 3.13 and Django 5.0, 5.1.
