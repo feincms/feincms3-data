@@ -96,7 +96,9 @@ def dump_specs(specs, *, mappers=None, objects=None):
     stream.write(', "objects": ')
     serializer = JSONSerializer(mappers=mappers or {})
     if objects is None:
-        objects = chain.from_iterable(_model_queryset(spec) for spec in specs)
+        objects = chain.from_iterable(
+            _model_queryset(spec).distinct() for spec in specs
+        )
     serializer.serialize(objects, stream=stream)
     stream.write("}")
     return stream.getvalue()
