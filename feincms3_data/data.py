@@ -100,8 +100,7 @@ def dump_specs(specs, *, mappers=None, objects=None):
             _model_queryset(spec).distinct() for spec in specs
         )
     serializer.serialize(objects, stream=stream)
-    stream.write("}\n")
-    return stream.getvalue()
+    return stream.getvalue().rstrip("\n") + "}\n"
 
 
 def load_dump(
