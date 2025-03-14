@@ -1,7 +1,7 @@
 import io
 import json
 from collections import defaultdict
-from functools import lru_cache
+from functools import cache
 from itertools import chain, count
 
 from django.apps import apps
@@ -238,7 +238,7 @@ def _finalize(
 
 
 def pk_cache():
-    @lru_cache(maxsize=None)
+    @cache
     def pks(model):
         return set(model._default_manager.values_list("pk", flat=True))
 

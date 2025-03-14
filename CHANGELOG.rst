@@ -5,6 +5,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Raised the minimum version requirements to Python 3.10 and Django 4.2.
+- Added Django 5.2.
+
 
 0.7 (2024-10-28)
 ~~~~~~~~~~~~~~~~
