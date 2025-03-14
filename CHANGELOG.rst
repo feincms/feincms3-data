@@ -7,6 +7,8 @@ Next version
 
 - Raised the minimum version requirements to Python 3.10 and Django 4.2.
 - Added Django 5.2.
+- Changed the JSON dumps to include a final newline. This change is inspired by
+  the same change to Django.
 
 
 0.7 (2024-10-28)

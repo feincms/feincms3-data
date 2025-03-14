@@ -660,5 +660,5 @@ class DataTest(TransactionTestCase):
 
         self.assertEqual(
             data,
-            '{"version": 1, "specs": [{"model": "testapp.tag"}], "objects": [{"model": "testapp.tag", "pk": 5, "fields": {"name": "Hello", "parent": null}}]}',
+            '{"version": 1, "specs": [{"model": "testapp.tag"}], "objects": [{"model": "testapp.tag", "pk": 5, "fields": {"name": "Hello", "parent": null}}]}\n',
         )
