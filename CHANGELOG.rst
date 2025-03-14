@@ -5,6 +5,11 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+
+0.8 (2025-03-14)
+~~~~~~~~~~~~~~~~
+
+- Ensured that dumps only ever contain distinct objects from single specs.
 - Raised the minimum version requirements to Python 3.10 and Django 4.2.
 - Added Django 5.2.
 - Changed the JSON dumps to include a final newline. This change is inspired by
