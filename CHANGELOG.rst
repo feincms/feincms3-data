@@ -5,6 +5,10 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+
+0.9 (2025-11-24)
+~~~~~~~~~~~~~~~~
+
 - Fixed a crash because of mishandled many to many relations when using
   ``save_as_new`` on both sides of the relation.
 - Added testing using Django 6.0rc1.
