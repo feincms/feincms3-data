@@ -262,20 +262,19 @@ _sentinel = object()
 def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks, deferred_m2m):
     # Map old PKs to new
     for f in ds.object._meta.get_fields():
-        if (
+        if f.many_to_many and f.related_model._meta.label_lower in save_as_new_models:
+            # Always defer
+            deferred_m2m.append(
+                (ds.object, ds.m2m_data.copy(), f.name, pk_map[f.related_model])
+            )
+
+        elif (
             f.concrete
             and f.related_model
             and f.related_model._meta.label_lower in save_as_new_models
             and (fk := getattr(ds.object, f.column)) is not None
         ):
-            if f.many_to_many:
-                # Always defer
-                deferred_m2m.append(
-                    (ds.object, ds.m2m_data.copy(), f.name, pk_map[f.related_model])
-                )
-            elif (
-                new_pk := pk_map[f.related_model].get(fk, _sentinel)
-            ) is not _sentinel:
+            if (new_pk := pk_map[f.related_model].get(fk, _sentinel)) is not _sentinel:
                 setattr(ds.object, f.name, new_pk)
             else:
                 # If foreign key isn't nullable we're toast.
