@@ -7,6 +7,7 @@ Next version
 
 - Fixed a crash because of mishandled many to many relations when using
   ``save_as_new`` on both sides of the relation.
+- Added testing using Django 6.0rc1.
 
 
 0.8 (2025-03-14)
