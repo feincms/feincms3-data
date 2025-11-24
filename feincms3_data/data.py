@@ -224,7 +224,8 @@ def _save_deferred_new_pks(deferred_new_pks):
 
 def _save_deferred_m2m(deferred_m2m):
     for ds, m2m_data, f_name, pk_map in deferred_m2m:
-        getattr(ds, f_name).set([pk_map[pk] for pk in m2m_data[f_name]])
+        if pks := m2m_data.get(f_name):
+            getattr(ds, f_name).set([pk_map[pk] for pk in pks])
 
 
 def _finalize(
