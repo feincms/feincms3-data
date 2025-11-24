@@ -116,7 +116,10 @@ def load_dump(
 
     # Yes, that is a bit stupid
     for ds in serializers.deserialize(
-        "json", json.dumps(data["objects"]), ignorenonexistent=ignorenonexistent
+        "json",
+        json.dumps(data["objects"]),
+        ignorenonexistent=ignorenonexistent,
+        # handle_forward_references=True,
     ):
         objects[ds.object._meta.label_lower].append(ds)
 
@@ -157,6 +160,7 @@ def _load_dump(
     ignore_missing_m2m_data = defaultdict(dict)
     deferred_new_pks = []
     deferred_values = []
+    deferred_m2m = []
 
     for spec in data["specs"]:
         if objs := objects[spec["model"]]:
@@ -181,6 +185,7 @@ def _load_dump(
                     pk_map=save_as_new_pk_map,
                     save_as_new_models=save_as_new_models,
                     deferred_new_pks=deferred_new_pks,
+                    deferred_m2m=deferred_m2m,
                 )
                 seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
                 models.add(ds.object.__class__)
@@ -188,6 +193,7 @@ def _load_dump(
         progress(f"Saved {len(objs)} {spec['model']} objects")
 
     _save_deferred_new_pks(deferred_new_pks)
+    _save_deferred_m2m(deferred_m2m)
 
     for spec in reversed(data["specs"]):
         if not spec.get("delete_missing"):
@@ -214,6 +220,11 @@ def _save_deferred_new_pks(deferred_new_pks):
     for ds, f_name, pk_map, fk in deferred_new_pks:
         setattr(ds.object, f_name, pk_map[fk])
         ds.save()
+
+
+def _save_deferred_m2m(deferred_m2m):
+    for ds, m2m_data, f_name, pk_map in deferred_m2m:
+        getattr(ds, f_name).set([pk_map[pk] for pk in m2m_data[f_name]])
 
 
 def _finalize(
@@ -247,7 +258,7 @@ def pk_cache():
 _sentinel = object()
 
 
-def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks):
+def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks, deferred_m2m):
     # Map old PKs to new
     for f in ds.object._meta.get_fields():
         if (
@@ -256,7 +267,14 @@ def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks):
             and f.related_model._meta.label_lower in save_as_new_models
             and (fk := getattr(ds.object, f.column)) is not None
         ):
-            if (new_pk := pk_map[f.related_model].get(fk, _sentinel)) is not _sentinel:
+            if f.many_to_many:
+                # Always defer
+                deferred_m2m.append(
+                    (ds.object, ds.m2m_data.copy(), f.name, pk_map[f.related_model])
+                )
+            elif (
+                new_pk := pk_map[f.related_model].get(fk, _sentinel)
+            ) is not _sentinel:
                 setattr(ds.object, f.name, new_pk)
             else:
                 # If foreign key isn't nullable we're toast.

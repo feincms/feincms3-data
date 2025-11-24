@@ -5,6 +5,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Fixed a crash because of mishandled many to many relations when using
+  ``save_as_new`` on both sides of the relation.
+
 
 0.8 (2025-03-14)
 ~~~~~~~~~~~~~~~~

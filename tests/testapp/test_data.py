@@ -148,10 +148,12 @@ class DataTest(TransactionTestCase):
 
     def test_save_as_new_simple(self):
         p1 = Parent.objects.create(name="blub")
+        t1 = Tag.objects.create(name="tag")
+        p1.tags.add(t1)
 
         specs = [
             *specs_for_models(
-                [Parent],
+                [Parent, Tag],
                 {"save_as_new": True},
             ),
         ]
@@ -160,9 +162,15 @@ class DataTest(TransactionTestCase):
         load_dump(dump)
 
         p2 = Parent.objects.latest("id")
+        t2 = Tag.objects.latest("id")
 
         self.assertNotEqual(p1.pk, p2.pk)
         self.assertEqual(p1.name, p2.name)
+
+        self.assertNotEqual(t1.pk, t2.pk)
+        self.assertEqual(t1.name, t2.name)
+
+        self.assertEqual(set(p2.tags.all()), {t2})
 
     def test_save_as_new_partial_graph(self):
         p1 = Parent.objects.create(name="blub-1")
