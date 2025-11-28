@@ -278,6 +278,46 @@ class DataTest(TransactionTestCase):
             [("p1-old", []), ("p1", ["c1"])],
         )
 
+    def test_stupid_edge_case_with_clashing_pks(self):
+        """
+        Children with `save_as_new` and `delete_missing` should be properly
+        recreated when we only care about values and not about primary keys.
+        """
+        p1 = Parent.objects.create(name="p1")
+        c1 = p1.child1_set.create(name="c1")
+
+        specs = [
+            *specs_for_models(
+                [Parent],
+            ),
+            *specs_for_models(
+                [Child1],
+                {"save_as_new": True, "delete_missing": True},
+            ),
+        ]
+
+        dump = dump_specs(specs)
+
+        # In the meantime, the other database has reused the child pk for a
+        # different object
+        p2 = Parent.objects.create(name="p2")
+        c1.name = "c1-old"
+        c1.parent = p2
+        c1.save()
+
+        # Also, we have a new child which should be deleted (since it isn't a
+        # part of the dump)
+        p1.child1_set.create(name="blub")
+
+        # Loading the dump should leave the reassigned child alone and just
+        # create a new child.
+        load_dump(json.loads(dump))
+
+        self.assertEqual(
+            parent_child1_set(),
+            [("p1", ["c1"]), ("p2", ["c1-old"])],
+        )
+
     def test_m2m_deletion_on_defining_side(self):
         t1 = Tag.objects.create(name="t1")
         t2 = Tag.objects.create(name="t2")
