@@ -168,6 +168,11 @@ Model specs consist of the following fields:
    keys rather than the old ones, preventing old data from being kept and new
    data from being inadvertently deleted.
 
+   Note that the mapping fails loudly on purpose if the primary key mapping
+   isn't available. The reason could be that the parent model doesn't actually
+   use ``save_as_new``. Since this is a potentially destructive operation it's
+   better to fail loudly than to silently eat data.
+
 The dumps can be loaded back into the database by running::
 
     ./manage.py f3loaddata -v2 tmp/pages.json tmp/districts.json
