@@ -5,6 +5,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.10 (2025-12-01)
+~~~~~~~~~~~~~~~~~
+
 - **IMPORTANT**: Using ``save_as_new`` together with ``delete_missing`` had the
   potential to leave old data lying around, since ``delete_missing`` would keep
   both the data with the old and the new primary key. This has been fixed now,
