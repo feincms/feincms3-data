@@ -1,6 +1,7 @@
 import io
 import json
 from collections import defaultdict
+from copy import deepcopy
 from functools import cache
 from itertools import chain, count
 
@@ -12,7 +13,7 @@ from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.utils.crypto import get_random_string
 from django.utils.module_loading import import_string
 
-from feincms3_data.serializers import JSONSerializer
+from feincms3_data.serializers import JSONEncoder, JSONSerializer
 
 
 def datasets():
@@ -92,7 +93,7 @@ def silence(*a):
 def dump_specs(specs, *, mappers=None, objects=None):
     stream = io.StringIO()
     stream.write('{"version": 1, "specs": ')
-    json.dump(specs, stream)
+    json.dump(specs, stream, cls=JSONEncoder)
     stream.write(', "objects": ')
     serializer = JSONSerializer(mappers=mappers or {})
     if objects is None:
@@ -177,9 +178,6 @@ def _load_dump(
                     )
                     setattr(ds.object, field_name, next(random_value))
 
-                # _do_save changes the PK if the model is in
-                # save_as_new_models
-                seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
                 _do_save(
                     ds,
                     pk_map=save_as_new_pk_map,
@@ -199,7 +197,13 @@ def _load_dump(
         if not spec.get("delete_missing"):
             continue
 
-        queryset = _model_queryset(spec)
+        if isinstance(spec["delete_missing"], dict) and (
+            map := spec["delete_missing"].get("map")
+        ):
+            queryset = _model_queryset(_map_spec(spec, map, save_as_new_pk_map))
+        else:
+            queryset = _model_queryset(spec)
+
         deleted = queryset.exclude(pk__in=seen_pks[spec["model"]]).delete()
         if deleted[0]:
             progress(f"Deleted {spec['model']} objects: {deleted}")
@@ -214,6 +218,19 @@ def _load_dump(
     for ds, field_name, value in deferred_values:
         setattr(ds.object, field_name, value)
         ds.save()
+
+
+def _map_spec(spec, map, save_as_new_pk_map):
+    spec = deepcopy(spec)
+    for key, model in map:
+        cls = apps.get_model(model)
+        if isinstance(spec["filter"][key], (list, tuple)):
+            spec["filter"][key] = [
+                save_as_new_pk_map[cls][pk] for pk in spec["filter"][key]
+            ]
+        else:
+            spec["filter"][key] = save_as_new_pk_map[cls][spec["filter"][key]]
+    return spec
 
 
 def _save_deferred_new_pks(deferred_new_pks):

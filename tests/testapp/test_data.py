@@ -6,6 +6,7 @@ from django.test import TransactionTestCase
 from feincms3_data.data import (
     InvalidSpecError,
     InvalidVersionError,
+    _map_spec,
     _validate_spec,
     datasets,
     dump_specs,
@@ -179,11 +180,13 @@ class DataTest(TransactionTestCase):
         p2 = Parent.objects.create(name="blub-2")
         p2.child1_set.create(name="blub-2-1")
 
+        # Verify the just created status
         self.assertEqual(
             parent_child1_set(),
             [("blub-1", ["blub-1-1"]), ("blub-2", ["blub-2-1"])],
         )
 
+        # Dump the tree starting at p1
         specs = [
             *specs_for_models(
                 [Parent],
@@ -204,7 +207,7 @@ class DataTest(TransactionTestCase):
 
         self.assertEqual(
             parent_child1_set(),
-            [("blub-1", ["blub-1-1", "blub-1-1"]), ("blub-2", ["blub-2-1"])],
+            [("blub-1", ["blub-1-1"]), ("blub-2", ["blub-2-1"])],
         )
 
     def test_save_as_new_full_graph(self):
@@ -231,7 +234,11 @@ class DataTest(TransactionTestCase):
                 {
                     "filter": {"parent__in": [p1.pk]},
                     "save_as_new": True,
-                    "delete_missing": True,  # Remove old child items
+                    "delete_missing": {
+                        "map": [
+                            ("parent__in", Parent),
+                        ],
+                    },
                 },
             ),
         ]
@@ -251,6 +258,37 @@ class DataTest(TransactionTestCase):
 
         p1_new = Parent.objects.latest("pk")
         self.assertNotEqual(p1.pk, p1_new.pk)
+
+    def test_map_spec(self):
+        self.assertEqual(
+            _map_spec(
+                {
+                    "filter": {"parent": 42},
+                },
+                [("parent", "testapp.parent")],
+                {
+                    Parent: {42: 3},
+                },
+            ),
+            {
+                "filter": {"parent": 3},
+            },
+        )
+
+        self.assertEqual(
+            _map_spec(
+                {
+                    "filter": {"parent__in": [42]},
+                },
+                [("parent__in", "testapp.parent")],
+                {
+                    Parent: {42: 3},
+                },
+            ),
+            {
+                "filter": {"parent__in": [3]},
+            },
+        )
 
     def test_save_as_new_parent_only(self):
         p1 = Parent.objects.create(name="p1")
@@ -289,10 +327,15 @@ class DataTest(TransactionTestCase):
         specs = [
             *specs_for_models(
                 [Parent],
+                {"filter": {"pk": p1.pk}},
             ),
             *specs_for_models(
                 [Child1],
-                {"save_as_new": True, "delete_missing": True},
+                {
+                    "filter": {"parent__id": p1.pk},
+                    "save_as_new": True,
+                    "delete_missing": True,
+                },
             ),
         ]
 

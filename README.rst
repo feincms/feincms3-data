@@ -144,6 +144,30 @@ Model specs consist of the following fields:
   loading initially and only receive their real value later. This is especially
   useful to avoid unique constraint errors when loading partial graphs.
 
+.. note::
+   When using ``save_as_new`` and ``delete_missing`` together, you may need to
+   specify how primary keys should be mapped to avoid inadvertent deletion of
+   objects. If you have a parent model with ``save_as_new`` and child models
+   with both ``save_as_new`` and ``delete_missing``, you should use the
+   dictionary form of ``delete_missing`` with a ``map`` parameter to map old
+   primary keys to new ones. For example:
+
+   .. code-block:: python
+
+       {
+           "filter": {"parent__in": [42]},
+           "save_as_new": True,
+           "delete_missing": {
+               "map": [
+                   ("parent__in", "app.Parent"),
+               ],
+           },
+       }
+
+   This ensures that child objects are matched against the new parent primary
+   keys rather than the old ones, preventing old data from being kept and new
+   data from being inadvertently deleted.
+
 The dumps can be loaded back into the database by running::
 
     ./manage.py f3loaddata -v2 tmp/pages.json tmp/districts.json

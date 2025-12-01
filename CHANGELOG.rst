@@ -5,6 +5,16 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- **IMPORTANT**: Using ``save_as_new`` together with ``delete_missing`` had the
+  potential to leave old data lying around, since ``delete_missing`` would keep
+  both the data with the old and the new primary key. This has been fixed now,
+  but this change also reintroduces the problem fixed in 0.3 where too much
+  data was being deleted if you're not being extra careful. If you have a
+  parent model with ``save_as_new`` and also child models with ``save_as_new``
+  and ``delete_missing`` you can now specify how primary keys should be mapped
+  so that child objects hanging off the original will not be deleted
+  inadvertently.
+
 
 0.9 (2025-11-24)
 ~~~~~~~~~~~~~~~~
