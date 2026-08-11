@@ -14,7 +14,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        dataset, sep, args = options["dataset"].partition(":")
+        dataset, _sep, args = options["dataset"].partition(":")
         try:
             ds = DATASETS[dataset]
         except KeyError:
