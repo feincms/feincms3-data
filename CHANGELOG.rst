@@ -5,6 +5,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.11 (2026-08-25)
+~~~~~~~~~~~~~~~~~
+
 - Added testing using Python 3.14, Django 6.1.
 - Fixed a crash when loading dumps containing objects which have been recreated
   on the source database (and therefore have a new primary key) while the
