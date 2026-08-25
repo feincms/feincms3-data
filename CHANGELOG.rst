@@ -19,6 +19,13 @@ Next version
   ``InconsistentModelError``. Loading it silently left the stale row of the
   other type behind -- the parent row is shared, so nothing ever removed it --
   and produced an object which was two things at once.
+- Fixed ``save_as_new`` for multi table inheritance children. The primary key
+  of a child *is* the field pointing at its parent, so nulling it to obtain a
+  new one broke the link; the database then handed out an unrelated primary
+  key of its own and the copied child ended up hanging off some other object.
+  The child now follows its newly created parent instead. Using ``save_as_new``
+  for a child whose parent doesn't use it raises ``InvalidSpecError``, since
+  the child cannot receive a primary key of its own at all.
 
 0.10 (2025-12-01)
 ~~~~~~~~~~~~~~~~~

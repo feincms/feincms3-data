@@ -923,6 +923,55 @@ class DataTest(TransactionTestCase):
 
         _check_mti_siblings(objects, {"testapp.uniqueslugmti2"}, DEFAULT_DB_ALIAS)
 
+    def test_save_as_new_mti(self):
+        """
+        Copying a multi table inheritance object
+
+        The primary key of the child *is* the primary key of its parent, so it
+        cannot receive one of its own -- it has to follow the parent. The other
+        rows exist so that the primary keys of the two tables drift apart; if
+        they don't, nulling the child's primary key happens to produce the
+        right value by accident.
+        """
+        old_pk = UniqueSlugMTI2.objects.create(slug="abc").pk
+        UniqueSlug.objects.create(slug="filler-1")
+        UniqueSlug.objects.create(slug="filler-2")
+
+        specs = [
+            *specs_for_models([UniqueSlug, UniqueSlugMTI2], {"save_as_new": True}),
+        ]
+
+        def rename(obj):
+            obj["fields"]["slug"] += "-copy"
+            return obj
+
+        dump = json.loads(dump_specs(specs, mappers={"testapp.uniqueslug": rename}))
+        load_dump(dump)
+
+        copies = UniqueSlug.objects.filter(slug="abc-copy")
+        self.assertEqual(len(copies), 1)
+        self.assertNotEqual(copies[0].pk, old_pk)
+
+        # The copied child hangs off the copied parent, not off some other row
+        self.assertCountEqual(
+            [u.pk for u in UniqueSlugMTI2.objects.all()],
+            [old_pk, copies[0].pk],
+        )
+
+    def test_save_as_new_mti_child_without_its_parent(self):
+        """A child cannot receive a new primary key while its parent keeps its own"""
+        UniqueSlugMTI2.objects.create(slug="abc")
+
+        specs = [
+            *specs_for_models([UniqueSlug]),
+            *specs_for_models([UniqueSlugMTI2], {"save_as_new": True}),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        with self.assertRaises(InvalidSpecError) as cm:
+            load_dump(dump)
+        self.assertIn("cannot receive a new primary key of its own", str(cm.exception))
+
     def test_cycles(self):
         """t1 refers to t2 which doesn't exist yet at the time t1 is inserted"""
         t1 = Tag.objects.create(name="t1")

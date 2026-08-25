@@ -409,6 +409,10 @@ _sentinel = object()
 
 
 def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks, deferred_m2m):
+    # The primary key of a multi table inheritance child is the very field
+    # pointing at its parent, so remember it before remapping foreign keys.
+    old_pk = ds.object.pk
+
     # Map old PKs to new
     for f in ds.object._meta.get_fields():
         if f.many_to_many and f.related_model._meta.label_lower in save_as_new_models:
@@ -433,8 +437,22 @@ def _do_save(ds, *, pk_map, save_as_new_models, deferred_new_pks, deferred_m2m):
 
     if ds.object._meta.label_lower in save_as_new_models:
         # Do the saving
-        old_pk = ds.object.pk
-        ds.object.pk = None
+        pk_related_model = ds.object._meta.pk.related_model
+        if pk_related_model is None:
+            ds.object.pk = None
+        elif pk_related_model._meta.label_lower in save_as_new_models:
+            # The primary key *is* the relation to the object this one extends,
+            # and has been remapped to the new object above already. Nulling it
+            # would only break the link (and the database would then hand out
+            # some unrelated primary key of its own).
+            pass
+        else:
+            raise InvalidSpecError(
+                f"{ds.object._meta.label_lower!r} uses 'save_as_new', but its"
+                f" primary key is the relation to"
+                f" {pk_related_model._meta.label_lower!r}, which doesn't. It"
+                f" cannot receive a new primary key of its own."
+            )
         ds.save(force_insert=True)
         pk_map[ds.object.__class__][old_pk] = ds.object
 
