@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core import serializers
 from django.core.management.color import no_style
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
+from django.db.models import Q
 from django.utils.crypto import get_random_string
 from django.utils.module_loading import import_string
 
@@ -163,6 +164,21 @@ def _load_dump(
     deferred_values = []
     deferred_m2m = []
 
+    for spec in reversed(data["specs"]):
+        # Primary keys of ``save_as_new`` objects aren't known in advance, and
+        # neither are the mapped filters of their dependents.
+        if (
+            spec.get("delete_missing") is True
+            and not spec.get("save_as_new")
+            and (objs := objects[spec["model"]])
+        ):
+            _delete_conflicting(
+                spec,
+                objs,
+                {ds.object.pk for ds in objs},
+                progress,
+            )
+
     for spec in data["specs"]:
         if objs := objects[spec["model"]]:
             for ds in objs:
@@ -218,6 +234,67 @@ def _load_dump(
     for ds, field_name, value in deferred_values:
         setattr(ds.object, field_name, value)
         ds.save()
+
+
+@cache
+def _unique_field_sets(model):
+    """Field combinations which have to be unique for all rows of ``model``"""
+    meta = model._meta
+    return [
+        *(
+            (f.attname,)
+            for f in meta.local_concrete_fields
+            if f.unique and not f.primary_key
+        ),
+        *(
+            tuple(meta.get_field(name).attname for name in fields)
+            for fields in meta.unique_together
+        ),
+        *(
+            tuple(meta.get_field(name).attname for name in constraint.fields)
+            for constraint in meta.total_unique_constraints
+        ),
+    ]
+
+
+def _delete_conflicting(spec, objs, seen_pks, progress):
+    """
+    Delete rows which conflict with objects from the dump
+
+    Objects may be recreated on the source and therefore arrive with a new
+    primary key while the row holding the same unique values still exists in
+    the target database. ``delete_missing`` would get rid of the stale row, but
+    only after the object from the dump has been saved -- too late, since
+    unique constraints do not allow both rows to exist at the same time.
+
+    Only rows which the spec's ``delete_missing`` would remove anyway are
+    deleted here, just earlier.
+    """
+    field_sets = _unique_field_sets(apps.get_model(spec["model"]))
+    if not field_sets:
+        return
+
+    q = Q()
+    single = defaultdict(set)
+    for ds in objs:
+        for fields in field_sets:
+            values = {field: getattr(ds.object, field) for field in fields}
+            # NULLs do not conflict with anything (at least by default)
+            if any(value is None for value in values.values()):
+                continue
+            if len(fields) == 1:
+                # Avoid a needlessly long chain of ORs
+                single[fields[0]].add(values[fields[0]])
+            else:
+                q |= Q(**values)
+    for field, values in single.items():
+        q |= Q(**{f"{field}__in": values})
+    if not q:
+        return
+
+    deleted = _model_queryset(spec).filter(q).exclude(pk__in=seen_pks).delete()
+    if deleted[0]:
+        progress(f"Deleted conflicting {spec['model']} objects: {deleted}")
 
 
 def _map_spec(spec, map, save_as_new_pk_map):

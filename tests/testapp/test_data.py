@@ -17,13 +17,16 @@ from feincms3_data.data import (
     specs_for_models,
 )
 from testapp.models import (
+    Assignment,
     Child,
     Child1,
+    Item,
     Parent,
     Related,
     Tag,
     UniqueSlug,
     UniqueSlugMTI,
+    Zone,
 )
 
 
@@ -76,6 +79,9 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.related"},
                         {"model": "testapp.uniqueslug"},
                         {"model": "testapp.uniqueslugmti"},
+                        {"model": "testapp.zone"},
+                        {"model": "testapp.item"},
+                        {"model": "testapp.assignment"},
                     ]
                 }
             },
@@ -102,6 +108,9 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.related", "delete_missing": True},
                 {"model": "testapp.uniqueslug", "delete_missing": True},
                 {"model": "testapp.uniqueslugmti", "delete_missing": True},
+                {"model": "testapp.zone", "delete_missing": True},
+                {"model": "testapp.item", "delete_missing": True},
+                {"model": "testapp.assignment", "delete_missing": True},
             ],
         )
 
@@ -451,6 +460,9 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.related"},
                 {"model": "testapp.uniqueslug"},
                 {"model": "testapp.uniqueslugmti"},
+                {"model": "testapp.zone"},
+                {"model": "testapp.item"},
+                {"model": "testapp.assignment"},
             ],
         )
 
@@ -680,6 +692,54 @@ class DataTest(TransactionTestCase):
         self.assertCountEqual(
             [u.slug for u in UniqueSlug.objects.all()],
             ["abc", "def"],
+        )
+
+    def test_m2m_through_model_with_reused_unique_together(self):
+        """
+        A through model row is recreated on the source and therefore has a new
+        primary key; the target still contains the old row.
+
+        ``delete_missing`` would get rid of the stale row, but only after the
+        row from the dump has been inserted -- and the unique constraint on
+        ``(zone, item)`` doesn't allow both rows to exist at the same time.
+        ``defer_values`` isn't an option here since we cannot temporarily stuff
+        random values into foreign key columns.
+        """
+        zone = Zone.objects.create(name="zone")
+        item = Item.objects.create(name="item")
+        assignment = Assignment.objects.create(zone=zone, item=item)
+        assignment_pk = assignment.pk
+
+        # A zone which isn't a part of the dump at all
+        other = Assignment.objects.create(
+            zone=Zone.objects.create(name="other"),
+            item=Item.objects.create(name="other"),
+        )
+
+        specs = [
+            *specs_for_models([Zone, Item], {"filter": {"pk__in": [zone.pk]}}),
+            *specs_for_models(
+                [Assignment],
+                {"filter": {"zone__in": [zone.pk]}, "delete_missing": True},
+            ),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        # The target contains the same (zone, item) assignment, but with a
+        # different primary key -- e.g. because an editor removed and re-added
+        # the assignment on the source.
+        assignment.delete()
+        stale = Assignment.objects.create(zone=zone, item=item)
+        self.assertNotEqual(stale.pk, assignment_pk)
+
+        load_dump(dump)
+
+        self.assertEqual(
+            [(a.pk, a.zone_id, a.item_id) for a in Assignment.objects.all()],
+            [
+                (assignment_pk, zone.pk, item.pk),
+                (other.pk, other.zone_id, other.item_id),
+            ],
         )
 
     def test_cycles(self):

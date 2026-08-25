@@ -133,7 +133,11 @@ Model specs consist of the following fields:
   method as keyword arguments; used for determining the objects to dump and the
   objects to remove after loading.
 - ``"delete_missing"``: This flag makes the loader delete all objects matching
-  ``"filter"`` which do not exist in the dump.
+  ``"filter"`` which do not exist in the dump. Objects which would violate a
+  unique constraint of an object from the dump are deleted before loading
+  instead of afterwards; this is required when objects have been recreated (and
+  therefore have a new primary key) on the source database. Only objects which
+  ``delete_missing`` would remove anyway are affected.
 - ``"ignore_missing_m2m"``: A list of field names where deletions of related
   models should be ignored when restoring. This may be especially useful when
   only transferring content partially between databases.
@@ -180,4 +184,6 @@ The dumps can be loaded back into the database by running::
 Each dump is processed in an individual transaction. The data is first loaded
 into the database; at the end, data *matching* the filters but whose primary
 key wasn't contained in the dump is deleted from the database (if
-``"delete_missing": True``).
+``"delete_missing": True``). The only exception are objects which conflict with
+the dump's data on a unique constraint -- those are removed upfront, since
+databases do not allow the old and the new row to exist at the same time.

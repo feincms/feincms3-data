@@ -56,3 +56,32 @@ class UniqueSlug(models.Model):
 
 class UniqueSlugMTI(UniqueSlug):
     pass
+
+
+class Zone(models.Model):
+    name = models.CharField(default="name", max_length=20)
+    items = models.ManyToManyField("Item", through="Assignment", related_name="zones")
+
+    def __str__(self):
+        return self.name
+
+
+class Item(models.Model):
+    name = models.CharField(default="name", max_length=20)
+
+    def __str__(self):
+        return self.name
+
+
+class Assignment(models.Model):
+    """Through model of an m2m relation with its own primary key"""
+
+    zone = models.ForeignKey(Zone, on_delete=models.CASCADE)
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ["id"]
+        unique_together = ("zone", "item")
+
+    def __str__(self):
+        return f"{self.zone}: {self.item}"

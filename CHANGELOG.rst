@@ -5,7 +5,15 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
-- Added testing using Python 3.14.
+- Added testing using Python 3.14, Django 6.1.
+- Fixed a crash when loading dumps containing objects which have been recreated
+  on the source database (and therefore have a new primary key) while the
+  target database still contains the row holding the same unique values, e.g.
+  rows of a many to many ``through`` model with a ``unique_together``
+  constraint. ``delete_missing`` would have removed the stale row, but only
+  after saving the objects from the dump -- too late for the database. Such
+  conflicting objects are now deleted before loading. Only objects which
+  ``delete_missing`` would remove anyway are affected.
 
 0.10 (2025-12-01)
 ~~~~~~~~~~~~~~~~~
