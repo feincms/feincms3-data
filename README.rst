@@ -149,6 +149,21 @@ Model specs consist of the following fields:
   useful to avoid unique constraint errors when loading partial graphs.
 
 .. note::
+   Multi table inheritance children share the primary key of their parent. If
+   the database says an object is a different concrete model than the dump does
+   -- which happens once the databases drift apart, e.g. because objects are
+   created on the target as well -- loading is refused with an
+   ``InconsistentModelError``.
+
+   Loading anyway would leave the stale row of the other type behind: the
+   parent row is shared, so nothing ever removes it, and the result would be an
+   object which is two things at once. Removing it automatically isn't an
+   option either -- deleting the stale child takes the shared parent row with
+   it, and since Django is perfectly happy with a parent having several
+   children the row may not even be stale. Delete the offending objects
+   yourself and load again.
+
+.. note::
    Objects which have been deleted and recreated on the source database arrive
    with a new primary key, while the target database still holds the row with
    the same unique values. Databases don't allow both rows to exist at the same

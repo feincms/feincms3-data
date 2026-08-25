@@ -48,6 +48,10 @@ class InvalidSpecError(Exception):
     pass
 
 
+class InconsistentModelError(Exception):
+    pass
+
+
 _valid_keys = {
     "model",
     "filter",
@@ -131,6 +135,8 @@ def load_dump(
         spec["model"] for spec in data["specs"] if spec.get("save_as_new")
     }
 
+    _check_mti_siblings(objects, save_as_new_models, using)
+
     with transaction.atomic(using=using):
         connection = connections[using]
         with connection.constraint_checks_disabled():
@@ -148,6 +154,55 @@ def load_dump(
                 connection,
                 models,
             )
+
+
+@cache
+def _mti_siblings(model):
+    """Concrete models sharing a parent -- and a primary key -- with ``model``"""
+    return [
+        rel.related_model
+        for parent in model._meta.parents
+        for rel in parent._meta.related_objects
+        if rel.parent_link and rel.related_model is not model
+    ]
+
+
+def _check_mti_siblings(objects, save_as_new_models, using):
+    """
+    Refuse to load if the database disagrees with the dump about what an object is
+
+    Multi table inheritance children share the primary key of their parent, so
+    loading a child over a sibling's row leaves the stale sibling behind: the
+    parent row is shared, which means nothing ever removes it, and the result
+    is an object which is two things at once.
+
+    We cannot clean this up ourselves. Deleting the stale row would take the
+    shared parent row with it, and we cannot even know whether the row really
+    is stale -- Django is fine with a parent having several children. So, fail
+    loudly instead of silently producing a mess.
+    """
+    dumped = {label: {ds.object.pk for ds in objs} for label, objs in objects.items()}
+    for label, pks in dumped.items():
+        if label in save_as_new_models:
+            # Those objects are inserted using fresh primary keys, so they
+            # cannot land on top of a sibling's row.
+            continue
+        for sibling in _mti_siblings(apps.get_model(label)):
+            sibling_label = sibling._meta.label_lower
+            conflicting = sorted(
+                sibling._default_manager.using(using)
+                .filter(pk__in=pks)
+                .exclude(pk__in=dumped.get(sibling_label, ()))
+                .values_list("pk", flat=True)
+            )
+            if conflicting:
+                raise InconsistentModelError(
+                    f"The dump contains {label} objects with the primary keys"
+                    f" {conflicting!r} which already exist as {sibling_label}"
+                    f" objects in the database. Loading the dump would produce"
+                    f" objects which are both. Remove the conflicting"
+                    f" {sibling_label} objects first."
+                )
 
 
 def _load_dump(

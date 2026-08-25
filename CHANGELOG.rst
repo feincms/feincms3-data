@@ -14,6 +14,11 @@ Next version
   after saving the objects from the dump -- too late for the database. Such
   conflicting objects are now deleted before loading. Only objects which
   ``delete_missing`` would remove anyway are affected.
+- ``load_dump`` now refuses to load an object which already exists as a
+  different multi table inheritance child of the same parent, raising the new
+  ``InconsistentModelError``. Loading it silently left the stale row of the
+  other type behind -- the parent row is shared, so nothing ever removed it --
+  and produced an object which was two things at once.
 
 0.10 (2025-12-01)
 ~~~~~~~~~~~~~~~~~

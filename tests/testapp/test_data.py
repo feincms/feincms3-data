@@ -1,11 +1,14 @@
 import json
+from types import SimpleNamespace
 
-from django.db import IntegrityError, models
+from django.db import DEFAULT_DB_ALIAS, IntegrityError, models
 from django.test import TransactionTestCase
 
 from feincms3_data.data import (
+    InconsistentModelError,
     InvalidSpecError,
     InvalidVersionError,
+    _check_mti_siblings,
     _map_spec,
     _validate_spec,
     datasets,
@@ -859,6 +862,66 @@ class DataTest(TransactionTestCase):
             [u.pk for u in UniqueSlugMTI2.objects.all()],
             [new_pk, unrelated.pk],
         )
+
+    def test_object_exists_as_a_different_mti_child(self):
+        """
+        The database disagrees with the dump about what an object is
+
+        This happens when the two databases drift apart, e.g. because objects
+        are created on the target as well. Loading the dump would leave the
+        stale sibling row behind -- the parent row is shared, so nothing ever
+        removes it -- and produce an object which is two things at once.
+        """
+        pk = UniqueSlugMTI2.objects.create(slug="abc").pk
+
+        specs = [
+            *specs_for_models([UniqueSlug]),
+            *specs_for_models([UniqueSlugMTI, UniqueSlugMTI2]),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        # The target holds a different type under the very same primary key
+        UniqueSlug.objects.all().delete()
+        UniqueSlugMTI.objects.create(pk=pk, slug="abc")
+
+        with self.assertRaises(InconsistentModelError) as cm:
+            load_dump(dump)
+
+        self.assertIn("testapp.uniqueslugmti2 objects", str(cm.exception))
+        self.assertIn(f"primary keys [{pk}]", str(cm.exception))
+        self.assertIn("already exist as testapp.uniqueslugmti", str(cm.exception))
+
+        # Nothing has been touched
+        self.assertEqual([u.pk for u in UniqueSlugMTI.objects.all()], [pk])
+        self.assertEqual(list(UniqueSlugMTI2.objects.all()), [])
+
+    def test_objects_may_be_several_mti_children_at_once(self):
+        """Django allows it, so a dump describing both isn't a conflict"""
+        pk = UniqueSlugMTI.objects.create(slug="abc").pk
+        UniqueSlugMTI2.objects.create(pk=pk, slug="abc")
+
+        specs = [
+            *specs_for_models([UniqueSlug]),
+            *specs_for_models([UniqueSlugMTI, UniqueSlugMTI2]),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        load_dump(dump)
+
+        self.assertEqual([u.pk for u in UniqueSlugMTI.objects.all()], [pk])
+        self.assertEqual([u.pk for u in UniqueSlugMTI2.objects.all()], [pk])
+
+    def test_mti_sibling_check_skips_save_as_new(self):
+        """``save_as_new`` objects get fresh primary keys and cannot collide"""
+        pk = UniqueSlugMTI.objects.create(slug="abc").pk
+        objects = {
+            "testapp.uniqueslugmti2": [SimpleNamespace(object=UniqueSlugMTI2(pk=pk))]
+        }
+
+        with self.assertRaises(InconsistentModelError):
+            _check_mti_siblings(objects, set(), DEFAULT_DB_ALIAS)
+
+        _check_mti_siblings(objects, {"testapp.uniqueslugmti2"}, DEFAULT_DB_ALIAS)
 
     def test_cycles(self):
         """t1 refers to t2 which doesn't exist yet at the time t1 is inserted"""
