@@ -18,3 +18,6 @@ means updating those.
 - Formatting and linting: `ruff` via `pre-commit`.
 - Changes go into the "Next version" section of `CHANGELOG.rst`; spec flags are
   documented in `README.rst`.
+- Commit proactively, even without being asked explicitly -- roughly one
+  commit per logical feature/change. Never add Co-Authored-By or other AI
+  attribution to commit messages.
