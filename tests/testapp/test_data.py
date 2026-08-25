@@ -274,6 +274,31 @@ class DataTest(TransactionTestCase):
         p1_new = Parent.objects.latest("pk")
         self.assertNotEqual(p1.pk, p1_new.pk)
 
+    def test_save_as_new_same_model_several_specs(self):
+        """
+        A model split across several specs is only ever saved once per object
+
+        Objects are grouped by model label while loading, not by spec. A
+        model appearing in more than one spec -- e.g. because it's split into
+        several ``"filter"``s -- used to have its objects saved again for
+        every spec referencing it, producing one additional ``save_as_new``
+        copy per extra spec instead of exactly one.
+        """
+        p1 = Parent.objects.create(name="p1")
+        p2 = Parent.objects.create(name="p2")
+
+        specs = [
+            *specs_for_models([Parent], {"filter": {"pk": p1.pk}, "save_as_new": True}),
+            *specs_for_models([Parent], {"filter": {"pk": p2.pk}, "save_as_new": True}),
+        ]
+        dump = json.loads(dump_specs(specs))
+        load_dump(dump)
+
+        self.assertCountEqual(
+            Parent.objects.values_list("name", flat=True),
+            ["p1", "p2", "p1", "p2"],
+        )
+
     def test_map_spec(self):
         self.assertEqual(
             _map_spec(

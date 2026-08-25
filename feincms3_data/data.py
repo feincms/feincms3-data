@@ -205,6 +205,39 @@ def _check_mti_siblings(objects, save_as_new_models, using):
                 )
 
 
+def _save_objects(
+    spec,
+    objs,
+    *,
+    save_as_new_pk_map,
+    save_as_new_models,
+    ignore_missing_m2m_data,
+    deferred_values,
+    deferred_new_pks,
+    deferred_m2m,
+    seen_pks,
+    models,
+):
+    for ds in objs:
+        for field_name in spec.get("ignore_missing_m2m", ()):
+            ignore_missing_m2m_data[ds][field_name] = ds.m2m_data.pop(field_name, [])
+
+        random_value = _random_values()
+        for field_name in spec.get("defer_values", ()):
+            deferred_values.append((ds, field_name, getattr(ds.object, field_name)))
+            setattr(ds.object, field_name, next(random_value))
+
+        _do_save(
+            ds,
+            pk_map=save_as_new_pk_map,
+            save_as_new_models=save_as_new_models,
+            deferred_new_pks=deferred_new_pks,
+            deferred_m2m=deferred_m2m,
+        )
+        seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
+        models.add(ds.object.__class__)
+
+
 def _load_dump(
     data,
     objects,
@@ -234,31 +267,31 @@ def _load_dump(
                 progress,
             )
 
+    saved_models = set()
     for spec in data["specs"]:
-        if objs := objects[spec["model"]]:
-            for ds in objs:
-                for field_name in spec.get("ignore_missing_m2m", ()):
-                    ignore_missing_m2m_data[ds][field_name] = ds.m2m_data.pop(
-                        field_name, []
-                    )
+        if spec["model"] in saved_models:
+            # Objects are keyed by model label, not by spec, so a model
+            # appearing in several specs (e.g. several ``delete_missing``
+            # filters for the same model) would otherwise have all of its
+            # objects saved again for each spec -- applying that spec's
+            # flags (``save_as_new`` and friends) to objects which were
+            # never meant to be governed by it.
+            continue
+        saved_models.add(spec["model"])
 
-                random_value = _random_values()
-                for field_name in spec.get("defer_values", ()):
-                    deferred_values.append(
-                        (ds, field_name, getattr(ds.object, field_name))
-                    )
-                    setattr(ds.object, field_name, next(random_value))
-
-                _do_save(
-                    ds,
-                    pk_map=save_as_new_pk_map,
-                    save_as_new_models=save_as_new_models,
-                    deferred_new_pks=deferred_new_pks,
-                    deferred_m2m=deferred_m2m,
-                )
-                seen_pks[ds.object._meta.label_lower].add(ds.object.pk)
-                models.add(ds.object.__class__)
-
+        objs = objects[spec["model"]]
+        _save_objects(
+            spec,
+            objs,
+            save_as_new_pk_map=save_as_new_pk_map,
+            save_as_new_models=save_as_new_models,
+            ignore_missing_m2m_data=ignore_missing_m2m_data,
+            deferred_values=deferred_values,
+            deferred_new_pks=deferred_new_pks,
+            deferred_m2m=deferred_m2m,
+            seen_pks=seen_pks,
+            models=models,
+        )
         progress(f"Saved {len(objs)} {spec['model']} objects")
 
     _save_deferred_new_pks(deferred_new_pks)

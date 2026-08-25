@@ -5,6 +5,13 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Fixed ``load_dump`` saving a model's objects again for every spec
+  referencing it when a model is split across several specs (e.g. several
+  ``delete_missing`` filters for the same model). This applied that spec's
+  flags -- ``save_as_new`` in particular -- to objects which were never meant
+  to be governed by it, and produced one extra ``save_as_new`` copy per extra
+  spec instead of exactly one.
+
 0.11 (2026-08-25)
 ~~~~~~~~~~~~~~~~~
 
