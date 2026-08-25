@@ -1,6 +1,6 @@
 import json
 
-from django.db import models
+from django.db import IntegrityError, models
 from django.test import TransactionTestCase
 
 from feincms3_data.data import (
@@ -740,6 +740,72 @@ class DataTest(TransactionTestCase):
                 (assignment_pk, zone.pk, item.pk),
                 (other.pk, other.zone_id, other.item_id),
             ],
+        )
+
+    def test_recreated_object_conflicting_with_a_unique_value(self):
+        """
+        An object has been deleted and recreated on the source and therefore
+        has a new primary key; the target still contains the row holding the
+        same unique value.
+
+        Contrary to ``test_m2m_through_model_with_reused_unique_together`` the
+        spec cannot simply use ``delete_missing``, since that would propagate
+        *all* deletions to the target immediately. Restricting the filter to
+        the unique values contained in the dump keeps the deletion narrow:
+        only rows claiming one of the dumped slugs may go.
+
+        ``UniqueSlug`` is the multi table inheritance parent of
+        ``UniqueSlugMTI`` here, so removing the conflicting row takes
+        everything hanging off it with it.
+        """
+        old = UniqueSlugMTI.objects.create(slug="abc")
+        old_pk = old.pk
+        unrelated = UniqueSlugMTI.objects.create(slug="def")
+
+        # The object has been recreated on the source: same slug, new pk.
+        old.delete()
+        new_pk = UniqueSlugMTI.objects.create(slug="abc").pk
+        self.assertNotEqual(new_pk, old_pk)
+
+        naive = [
+            *specs_for_models([UniqueSlug]),
+            *specs_for_models([UniqueSlugMTI]),
+        ]
+        specs = [
+            *specs_for_models(
+                [UniqueSlug],
+                {
+                    "filter": {
+                        "slug__in": list(
+                            UniqueSlug.objects.values_list("slug", flat=True)
+                        )
+                    },
+                    "delete_missing": True,
+                },
+            ),
+            *specs_for_models([UniqueSlugMTI]),
+        ]
+        naive_dump = json.loads(dump_specs(naive))
+        dump = json.loads(dump_specs(specs))
+
+        # The target still contains the original object under the old pk
+        UniqueSlugMTI.objects.exclude(pk=unrelated.pk).delete()
+        UniqueSlugMTI.objects.create(pk=old_pk, slug="abc")
+
+        # Nothing gets rid of the stale row, so the database refuses the insert
+        with self.assertRaises(IntegrityError):
+            load_dump(naive_dump)
+
+        load_dump(dump)
+
+        # The conflicting row is gone, the unrelated row is left alone
+        self.assertCountEqual(
+            [(u.pk, u.slug) for u in UniqueSlug.objects.all()],
+            [(new_pk, "abc"), (unrelated.pk, "def")],
+        )
+        self.assertCountEqual(
+            [u.pk for u in UniqueSlugMTI.objects.all()],
+            [new_pk, unrelated.pk],
         )
 
     def test_cycles(self):

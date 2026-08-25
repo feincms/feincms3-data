@@ -133,11 +133,11 @@ Model specs consist of the following fields:
   method as keyword arguments; used for determining the objects to dump and the
   objects to remove after loading.
 - ``"delete_missing"``: This flag makes the loader delete all objects matching
-  ``"filter"`` which do not exist in the dump. Objects which would violate a
-  unique constraint of an object from the dump are deleted before loading
-  instead of afterwards; this is required when objects have been recreated (and
-  therefore have a new primary key) on the source database. Only objects which
-  ``delete_missing`` would remove anyway are affected.
+  ``"filter"`` which do not exist in the dump. Those objects whose deletion is
+  a precondition for loading the dump at all -- because they hold unique values
+  which an object from the dump is claiming -- are deleted *before* loading
+  instead of at the end. Nothing else changes: the very same objects are
+  deleted, only earlier.
 - ``"ignore_missing_m2m"``: A list of field names where deletions of related
   models should be ignored when restoring. This may be especially useful when
   only transferring content partially between databases.
@@ -147,6 +147,32 @@ Model specs consist of the following fields:
 - ``"defer_values"``: A list of fields which should receive random garbage when
   loading initially and only receive their real value later. This is especially
   useful to avoid unique constraint errors when loading partial graphs.
+
+.. note::
+   Objects which have been deleted and recreated on the source database arrive
+   with a new primary key, while the target database still holds the row with
+   the same unique values. Databases don't allow both rows to exist at the same
+   time, so the old row has to go before the dump can be loaded.
+
+   ``"delete_missing"`` handles this by itself, as long as the old row matches
+   the spec's ``"filter"``. If you cannot use ``"delete_missing"`` for a model
+   -- typically because deletions shouldn't be propagated to the target as soon
+   as anything else is transferred -- restrict the filter to the unique values
+   contained in the dump instead:
+
+   .. code-block:: python
+
+       specs_for_models(
+           [Identifier],
+           {
+               "filter": {"identifier__in": identifiers},
+               "delete_missing": True,
+           },
+       )
+
+   This only ever deletes rows claiming one of the dumped identifiers (and
+   everything hanging off them) and leaves all other identifiers alone. Keep
+   the filter in sync with the objects you're actually dumping.
 
 .. note::
    When using ``save_as_new`` and ``delete_missing`` together, you may need to
@@ -184,6 +210,10 @@ The dumps can be loaded back into the database by running::
 Each dump is processed in an individual transaction. The data is first loaded
 into the database; at the end, data *matching* the filters but whose primary
 key wasn't contained in the dump is deleted from the database (if
-``"delete_missing": True``). The only exception are objects which conflict with
-the dump's data on a unique constraint -- those are removed upfront, since
+``"delete_missing": True``). The only exception are objects holding unique
+values which the dump's data claims -- those are removed upfront, since
 databases do not allow the old and the new row to exist at the same time.
+
+Both deletions are restricted to the spec's ``"filter"``. An object outside of
+the filter which holds a unique value claimed by the dump therefore still makes
+the load fail; widen the filter (or dump fewer objects) in that case.
