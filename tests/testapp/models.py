@@ -58,6 +58,10 @@ class UniqueSlugMTI(UniqueSlug):
     pass
 
 
+class UniqueSlugMTI2(UniqueSlug):
+    """A second model inheriting from the model carrying the unique value"""
+
+
 class Zone(models.Model):
     name = models.CharField(default="name", max_length=20)
     items = models.ManyToManyField("Item", through="Assignment", related_name="zones")

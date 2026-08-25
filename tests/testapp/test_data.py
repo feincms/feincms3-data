@@ -26,6 +26,7 @@ from testapp.models import (
     Tag,
     UniqueSlug,
     UniqueSlugMTI,
+    UniqueSlugMTI2,
     Zone,
 )
 
@@ -79,6 +80,7 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.related"},
                         {"model": "testapp.uniqueslug"},
                         {"model": "testapp.uniqueslugmti"},
+                        {"model": "testapp.uniqueslugmti2"},
                         {"model": "testapp.zone"},
                         {"model": "testapp.item"},
                         {"model": "testapp.assignment"},
@@ -108,6 +110,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.related", "delete_missing": True},
                 {"model": "testapp.uniqueslug", "delete_missing": True},
                 {"model": "testapp.uniqueslugmti", "delete_missing": True},
+                {"model": "testapp.uniqueslugmti2", "delete_missing": True},
                 {"model": "testapp.zone", "delete_missing": True},
                 {"model": "testapp.item", "delete_missing": True},
                 {"model": "testapp.assignment", "delete_missing": True},
@@ -460,6 +463,7 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.related"},
                 {"model": "testapp.uniqueslug"},
                 {"model": "testapp.uniqueslugmti"},
+                {"model": "testapp.uniqueslugmti2"},
                 {"model": "testapp.zone"},
                 {"model": "testapp.item"},
                 {"model": "testapp.assignment"},
@@ -805,6 +809,54 @@ class DataTest(TransactionTestCase):
         )
         self.assertCountEqual(
             [u.pk for u in UniqueSlugMTI.objects.all()],
+            [new_pk, unrelated.pk],
+        )
+
+    def test_recreated_object_as_a_different_mti_child(self):
+        """
+        Several models inherit from the model carrying the unique value, the
+        way several exercise types inherit from a single identifier model. The
+        object may well have been recreated as a *different* type on the
+        source, so the stale row of the original type has to go too.
+        """
+        old = UniqueSlugMTI.objects.create(slug="abc")
+        old_pk = old.pk
+        unrelated = UniqueSlugMTI2.objects.create(slug="def")
+
+        # Recreated on the source as a different type, with a new primary key
+        old.delete()
+        new_pk = UniqueSlugMTI2.objects.create(slug="abc").pk
+
+        specs = [
+            *specs_for_models(
+                [UniqueSlug],
+                {
+                    "filter": {
+                        "slug__in": list(
+                            UniqueSlug.objects.values_list("slug", flat=True)
+                        )
+                    },
+                    "delete_missing": True,
+                },
+            ),
+            *specs_for_models([UniqueSlugMTI, UniqueSlugMTI2]),
+        ]
+        dump = json.loads(dump_specs(specs))
+
+        # The target still contains the object as the original type
+        UniqueSlug.objects.exclude(pk=unrelated.pk).delete()
+        UniqueSlugMTI.objects.create(pk=old_pk, slug="abc")
+
+        load_dump(dump)
+
+        self.assertCountEqual(
+            [(u.pk, u.slug) for u in UniqueSlug.objects.all()],
+            [(new_pk, "abc"), (unrelated.pk, "def")],
+        )
+        # The stale row of the original type is gone as well
+        self.assertEqual(list(UniqueSlugMTI.objects.all()), [])
+        self.assertCountEqual(
+            [u.pk for u in UniqueSlugMTI2.objects.all()],
             [new_pk, unrelated.pk],
         )
 
