@@ -21,6 +21,8 @@ from feincms3_data.data import (
 )
 from testapp.models import (
     Assignment,
+    AssignmentNote,
+    AssignmentNoteAttachment,
     Child,
     Child1,
     Item,
@@ -87,6 +89,8 @@ class DataTest(TransactionTestCase):
                         {"model": "testapp.zone"},
                         {"model": "testapp.item"},
                         {"model": "testapp.assignment"},
+                        {"model": "testapp.assignmentnote"},
+                        {"model": "testapp.assignmentnoteattachment"},
                     ]
                 }
             },
@@ -117,6 +121,8 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.zone", "delete_missing": True},
                 {"model": "testapp.item", "delete_missing": True},
                 {"model": "testapp.assignment", "delete_missing": True},
+                {"model": "testapp.assignmentnote", "delete_missing": True},
+                {"model": "testapp.assignmentnoteattachment", "delete_missing": True},
             ],
         )
 
@@ -495,6 +501,8 @@ class DataTest(TransactionTestCase):
                 {"model": "testapp.zone"},
                 {"model": "testapp.item"},
                 {"model": "testapp.assignment"},
+                {"model": "testapp.assignmentnote"},
+                {"model": "testapp.assignmentnoteattachment"},
             ],
         )
 
@@ -772,6 +780,118 @@ class DataTest(TransactionTestCase):
                 (assignment_pk, zone.pk, item.pk),
                 (other.pk, other.zone_id, other.item_id),
             ],
+        )
+
+    def test_conflicting_row_deletion_spares_dependents_of_earlier_specs(self):
+        """
+        Deleting a conflicting row happens right before its own spec's
+        objects are saved, not in one pass before anything is saved at all.
+
+        This means specs listed *earlier* than the conflicting one get a
+        chance to be saved -- and therefore repointed away from the
+        soon-to-be-deleted row -- first. Here ``AssignmentNote`` keeps its
+        primary key across the load; only its ``assignment`` foreign key
+        changes, from the stale assignment to the recreated one. Because the
+        note spec is listed before the assignment spec, the note has already
+        been repointed by the time the stale assignment is deleted, so the
+        deletion doesn't cascade to it -- and the note's own local-only
+        attachment (never part of any dump) survives.
+        """
+        zone = Zone.objects.create(name="zone")
+        item = Item.objects.create(name="item")
+
+        # The state being loaded: the assignment has been recreated on the
+        # source with a fresh pk, and the note -- stable pk, never recreated
+        # -- has already been repointed to it there.
+        new_assignment = Assignment(pk=1000, zone=zone, item=item)
+        new_note = AssignmentNote(pk=2000, assignment=new_assignment, text="note")
+
+        specs = [
+            *specs_for_models([Zone, Item], {"filter": {"pk__in": [zone.pk]}}),
+            *specs_for_models([AssignmentNote], {"filter": {"pk__in": [2000]}}),
+            *specs_for_models(
+                [Assignment],
+                {"filter": {"zone__in": [zone.pk]}, "delete_missing": True},
+            ),
+        ]
+        dump = json.loads(
+            dump_specs(specs, objects=[zone, item, new_note, new_assignment])
+        )
+
+        # The target still contains the stale assignment (different pk, same
+        # zone/item), the note (same pk as in the dump) still pointing at it,
+        # and a local-only attachment on the note which was never part of any
+        # dump.
+        stale_assignment = Assignment.objects.create(zone=zone, item=item)
+        stale_note = AssignmentNote.objects.create(
+            pk=2000, assignment=stale_assignment, text="note"
+        )
+        attachment = AssignmentNoteAttachment.objects.create(
+            note=stale_note, text="precious, local-only"
+        )
+
+        load_dump(dump)
+
+        new_pk = Assignment.objects.get().pk
+        self.assertEqual(new_pk, 1000)
+        self.assertEqual(AssignmentNote.objects.get(pk=2000).assignment_id, new_pk)
+        self.assertTrue(
+            AssignmentNoteAttachment.objects.filter(pk=attachment.pk).exists()
+        )
+
+    def test_conflicting_row_deletion_can_still_cascade_to_dependents_of_later_specs(
+        self,
+    ):
+        """
+        Known limitation: specs listed *after* the conflicting one aren't
+        protected.
+
+        Same setup as ``test_conflicting_row_deletion_spares_dependents_of_earlier_specs``,
+        but with the assignment spec listed *before* the note spec -- the more
+        natural order, parent before dependent. The note hasn't been saved
+        (and repointed) yet when the stale assignment is deleted, so the
+        deletion still cascades to it, and from there to the note's local-only
+        attachment, which is gone for good: nothing recreates it since it was
+        never part of any dump. The note itself looks fine afterwards since it
+        gets reinserted by its own spec, but anything hanging off it that
+        isn't in the dump doesn't come back.
+        """
+        zone = Zone.objects.create(name="zone")
+        item = Item.objects.create(name="item")
+
+        new_assignment = Assignment(pk=1000, zone=zone, item=item)
+        new_note = AssignmentNote(pk=2000, assignment=new_assignment, text="note")
+
+        specs = [
+            *specs_for_models([Zone, Item], {"filter": {"pk__in": [zone.pk]}}),
+            *specs_for_models(
+                [Assignment],
+                {"filter": {"zone__in": [zone.pk]}, "delete_missing": True},
+            ),
+            *specs_for_models([AssignmentNote], {"filter": {"pk__in": [2000]}}),
+        ]
+        dump = json.loads(
+            dump_specs(specs, objects=[zone, item, new_assignment, new_note])
+        )
+
+        stale_assignment = Assignment.objects.create(zone=zone, item=item)
+        stale_note = AssignmentNote.objects.create(
+            pk=2000, assignment=stale_assignment, text="note"
+        )
+        attachment = AssignmentNoteAttachment.objects.create(
+            note=stale_note, text="precious, local-only"
+        )
+
+        load_dump(dump)
+
+        new_pk = Assignment.objects.get().pk
+        self.assertEqual(new_pk, 1000)
+        # The note looks intact...
+        self.assertEqual(AssignmentNote.objects.get(pk=2000).assignment_id, new_pk)
+        # ...but its local-only attachment was collaterally deleted along with
+        # the stale assignment, before the note could be repointed.
+        self.assertFalse(
+            AssignmentNoteAttachment.objects.filter(pk=attachment.pk).exists()
         )
 
     def test_recreated_object_conflicting_with_a_unique_value(self):

@@ -89,3 +89,27 @@ class Assignment(models.Model):
 
     def __str__(self):
         return f"{self.zone}: {self.item}"
+
+
+class AssignmentNote(models.Model):
+    """A row which keeps its primary key but gets its FK repointed on load"""
+
+    assignment = models.ForeignKey(
+        Assignment, on_delete=models.CASCADE, related_name="notes"
+    )
+    text = models.CharField(default="note", max_length=20)
+
+    def __str__(self):
+        return self.text
+
+
+class AssignmentNoteAttachment(models.Model):
+    """Local-only data hanging off a note, never itself part of any dump"""
+
+    note = models.ForeignKey(
+        AssignmentNote, on_delete=models.CASCADE, related_name="attachments"
+    )
+    text = models.CharField(default="attachment", max_length=20)
+
+    def __str__(self):
+        return self.text

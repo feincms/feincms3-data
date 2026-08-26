@@ -136,8 +136,13 @@ Model specs consist of the following fields:
   ``"filter"`` which do not exist in the dump. Those objects whose deletion is
   a precondition for loading the dump at all -- because they hold unique values
   which an object from the dump is claiming -- are deleted *before* loading
-  instead of at the end. Nothing else changes: the very same objects are
-  deleted, only earlier.
+  instead of at the end, right before that spec's own objects are saved.
+  Exactly the same objects are deleted, only earlier -- but earlier means a
+  ``CASCADE`` from that deletion may still reach objects of specs listed
+  *after* this one, even ones which the dump only intends to update (e.g. an
+  object which keeps its primary key but has a foreign key repointed to the
+  recreated object). Listing dependent specs *before* the one doing the
+  deleting avoids this, since their objects get saved -- and repointed -- first.
 - ``"ignore_missing_m2m"``: A list of field names where deletions of related
   models should be ignored when restoring. This may be especially useful when
   only transferring content partially between databases.
@@ -188,6 +193,12 @@ Model specs consist of the following fields:
    This only ever deletes rows claiming one of the dumped identifiers (and
    everything hanging off them) and leaves all other identifiers alone. Keep
    the filter in sync with the objects you're actually dumping.
+
+   "Everything hanging off them" includes objects of specs listed *after* the
+   one doing the deleting, even if those objects are also part of the dump and
+   would otherwise simply have their foreign key repointed to the recreated
+   row. List such dependent specs *before* the spec that deletes conflicting
+   rows to avoid losing anything -- e.g. local-only data -- attached to them.
 
 .. note::
    When using ``save_as_new`` and ``delete_missing`` together, you may need to

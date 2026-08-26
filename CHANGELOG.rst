@@ -11,6 +11,13 @@ Next version
   flags -- ``save_as_new`` in particular -- to objects which were never meant
   to be governed by it, and produced one extra ``save_as_new`` copy per extra
   spec instead of exactly one.
+- Deleting rows which conflict with an object from the dump (see 0.11) now
+  happens right before that object's own spec is saved instead of in one pass
+  before anything is saved at all. This gives objects of models listed
+  earlier in the specs a chance to be saved -- and therefore repointed away
+  from the row about to be deleted -- first, narrowing what an unrelated
+  ``CASCADE`` can sweep up. Models listed after the conflicting spec are still
+  not protected by this.
 
 0.11 (2026-08-25)
 ~~~~~~~~~~~~~~~~~

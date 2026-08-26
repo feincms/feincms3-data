@@ -252,21 +252,6 @@ def _load_dump(
     deferred_values = []
     deferred_m2m = []
 
-    for spec in reversed(data["specs"]):
-        # Primary keys of ``save_as_new`` objects aren't known in advance, and
-        # neither are the mapped filters of their dependents.
-        if (
-            spec.get("delete_missing") is True
-            and not spec.get("save_as_new")
-            and (objs := objects[spec["model"]])
-        ):
-            _delete_conflicting(
-                spec,
-                objs,
-                {ds.object.pk for ds in objs},
-                progress,
-            )
-
     saved_models = set()
     for spec in data["specs"]:
         if spec["model"] in saved_models:
@@ -280,6 +265,25 @@ def _load_dump(
         saved_models.add(spec["model"])
 
         objs = objects[spec["model"]]
+
+        # Primary keys of ``save_as_new`` objects aren't known in advance, and
+        # neither are the mapped filters of their dependents.
+        if spec.get("delete_missing") is True and not spec.get("save_as_new") and objs:
+            # Deleting conflicting rows has to happen before this model's own
+            # objects are saved -- otherwise the unique constraint they hold
+            # would reject the insert. Doing it here, right before that save
+            # (rather than in one pass upfront for every spec), gives objects
+            # of models appearing earlier in ``data["specs"]`` a chance to be
+            # saved -- and therefore repointed away from the row about to be
+            # deleted -- first, which narrows what an unrelated CASCADE can
+            # sweep up. Models appearing later are not protected by this.
+            _delete_conflicting(
+                spec,
+                objs,
+                {ds.object.pk for ds in objs},
+                progress,
+            )
+
         _save_objects(
             spec,
             objs,
